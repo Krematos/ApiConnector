@@ -1,3 +1,5 @@
+package krematos;
+
 import krematos.connector.externalApiException;
 import krematos.controller.MiddlewareController;
 import krematos.model.InternalRequest;
@@ -18,16 +20,17 @@ import java.time.LocalDateTime;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import krematos.Main;
+import krematos.controller.MiddlewareController;
 
-// Použijeme @WebFluxTest, který načte pouze Controller a potřebné závislosti (WebFlux)
-@WebFluxTest(value = MiddlewareController.class, excludeAutoConfiguration = {Main.class})
-class MiddlewareControllerTest {
+
+
+
+@WebFluxTest(controllers = MiddlewareController.class, excludeAutoConfiguration = {Main.class})
+class  MiddlewareControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
 
-    // Mockujeme Service vrstvu, abychom netestovali celou pipeline, ale jen Controller
     @MockBean
     private TransactionService transactionService;
 

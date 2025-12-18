@@ -1,3 +1,4 @@
+package krematos;
 
 import krematos.connector.ExternalSystemConnector;
 import krematos.model.ExternalApiRequest;

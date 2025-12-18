@@ -1,3 +1,5 @@
+package krematos.connector;
+
 import krematos.connector.ExternalSystemConnector;
 import krematos.model.ExternalApiRequest;
 import krematos.model.ExternalApiResponse;
@@ -67,14 +69,11 @@ public class ExternalSystemConnectorTest {
                 .expectNext(successResponse)
                 .verifyComplete();
 
-        // Ověříme, že došlo POUZE k jednomu volání
+        // Ověří, že došlo POUZE k jednomu volání
         verify(webClient, times(1)).post();
     }
 
     private ExternalApiRequest createTestRequest() {
-        // Opraveno: Odstraněna chyba kompilace (double místo BigDecimal) pokud to
-        // konstruktor vyžaduje
-        // Zde předpokládám, že ExternalApiRequest bere double, dle předchozí analýzy.
         return new ExternalApiRequest("REF-1", 50.00, "001");
     }
 }

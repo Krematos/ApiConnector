@@ -37,9 +37,7 @@ public class MiddlewareController {
                             .body(new InternalResponse(false, e.getMessage(), request.getInternalOrderId())));
                 })
                 .onErrorResume(RuntimeException.class, e -> {
-                    // Zde zachytí chyby po selhání všech opakování
-                    log.error("Chyba při zpracování transakce: {}", e.getMessage());
-                    // Návrat 503 Service Unavailable nebo 500 Internal Server Error
+                    log.error("Kritická chyba (5xx/Timeout): {}", e.getMessage());
                     return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE) // HTTP 503
                             .body(new InternalResponse(false, "Služba externího API je dočasně nedostupná.", request.getInternalOrderId())));
                 })

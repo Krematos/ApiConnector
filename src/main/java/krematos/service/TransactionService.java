@@ -32,13 +32,13 @@ public class TransactionService {
                 .doOnError(error -> System.err.println("Kompletní transakce selhala po všech opakováních: " + error.getMessage()));
     }
 
-    // --- Transformace (Zde bude složitá logika mapování polí) ---
+    // --- Transformace ---
     private ExternalApiRequest transformToExternal(InternalRequest internal) {
         // Příklad transformace: Složitější mapování a konverze hodnot
         String protocol = mapServiceTypeToProtocol(internal.getServiceType());
 
         return new ExternalApiRequest(
-                // Vytvoříme unikátní ID pro externí systém
+                // Vytvoří unikátní ID pro externí systém
                 internal.getInternalOrderId() + "-" + internal.getRequestedAt().format(DateTimeFormatter.ofPattern("yyMMddHHmm")),
                 internal.getAmount().doubleValue(), // Převede BigDecimal na double
                 protocol
