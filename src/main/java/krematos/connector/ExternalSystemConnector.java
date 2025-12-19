@@ -3,6 +3,8 @@ package krematos.connector;
 import krematos.model.ExternalApiRequest;
 import krematos.model.ExternalApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.retry.annotation.Backoff;
@@ -17,6 +19,9 @@ import java.time.Duration;
 @Slf4j
 @Component
 public class ExternalSystemConnector {
+
+    @Autowired
+        private RabbitTemplate rabbitTemplate;
         private final WebClient webClient;
 
         public ExternalSystemConnector(WebClient.Builder webClientBuilder,
@@ -79,9 +84,17 @@ public class ExternalSystemConnector {
                                 // Logika, která se spustí po všech neúspěšných pokusech (pokud @Retryable
                                 // selhalo)
                                 .onErrorResume(throwable -> {
-                                        log.error("Externí volání selhalo po všech pokusech: {}");
-                                        return Mono.fromRunnable(() -> rabbitTemplate.convertAndSend("external-api-failures", request))
-                                                .then(Mono.error(new RuntimeException("Transakce bude zpracována asynchronně později.")));
+                                    log.error("Externí volání selhalo po všech pokusech: {}", throwable.getMessage());
+
+                                    // Fallback: Odeslání do RabbitMQ a vrácení chyby/odpovědi
+                                    return Mono.fromRunnable(() -> {
+                                                log.info("Odesílám transakci {} do záložní fronty.", request.getTransactionId());
+                                                // Parametry: (exchange, routingKey, objekt)
+                                                rabbitTemplate.convertAndSend("failed.transactions.exchange", "retry.key", request);
+                                            })
+                                            .then(Mono.error(new RuntimeException(
+                                                    "API konektor selhal. Transakce byla uložena do fronty k pozdějšímu zpracování.",
+                                                    throwable)));
 
                                 });
         }
