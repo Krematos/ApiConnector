@@ -61,7 +61,7 @@ class  MiddlewareControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(validRequest)
                 .exchange()
-                .expectStatus().isOk() // Očekáváme 200 OK
+                .expectStatus().isOk() // Očekává 200 OK
                 .expectBody(InternalResponse.class)
                 .consumeWith(response -> {
                     // Ověření obsahu
@@ -83,7 +83,7 @@ class  MiddlewareControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(validRequest)
                 .exchange()
-                .expectStatus().isBadRequest() // Očekáváme 400 Bad Request
+                .expectStatus().isBadRequest() // Očekává 400 Bad Request
                 .expectBody(InternalResponse.class)
                 .consumeWith(response -> {
                     // Ověření obsahu
@@ -98,7 +98,7 @@ class  MiddlewareControllerTest {
     void shouldReturn503ServiceUnavailableOnServiceFailure() {
         String errorMessage = "API konektor selhal. Externí systém je nedostupný.";
 
-        // Simulujeme obecnou RuntimeException (která nastane po vyčerpání všech retry pokusů)
+        // Simuluje obecnou RuntimeException (která nastane po vyčerpání všech retry pokusů)
         when(transactionService.process(any(InternalRequest.class)))
                 .thenReturn(Mono.error(new RuntimeException(errorMessage)));
 
@@ -106,7 +106,7 @@ class  MiddlewareControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(validRequest)
                 .exchange()
-                .expectStatus().isEqualTo(503) // Očekáváme 503 Service Unavailable
+                .expectStatus().isEqualTo(503) // Očekává 503 Service Unavailable
                 .expectBody(InternalResponse.class)
                 .consumeWith(response -> {
                     // Ověření obsahu

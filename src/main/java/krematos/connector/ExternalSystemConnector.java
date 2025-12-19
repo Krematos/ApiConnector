@@ -79,14 +79,10 @@ public class ExternalSystemConnector {
                                 // Logika, která se spustí po všech neúspěšných pokusech (pokud @Retryable
                                 // selhalo)
                                 .onErrorResume(throwable -> {
-                                        // Zde můžeme implementovat Fallback strategii, nebo poslat zprávu do fronty pro
-                                        // pozdější zpracování
-                                        log.error("Externí volání selhalo po všech pokusech: {}",
-                                                        throwable.getMessage());
-                                        // Vrátí chybu, kterou zachytí Service/Controller vrstva
-                                        return Mono.error(new RuntimeException(
-                                                        "API konektor selhal. Externí systém je nedostupný.",
-                                                        throwable));
+                                        log.error("Externí volání selhalo po všech pokusech: {}");
+                                        return Mono.fromRunnable(() -> rabbitTemplate.convertAndSend("external-api-failures", request))
+                                                .then(Mono.error(new RuntimeException("Transakce bude zpracována asynchronně později.")));
+
                                 });
         }
 }

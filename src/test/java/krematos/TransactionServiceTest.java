@@ -25,11 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @ExtendWith(MockitoExtension.class)
 public class TransactionServiceTest {
-        // Mockujeme konektor, abychom netestovali skutečné volání API
+        // Mockuje konektor, aby netestoval skutečné volání API
         @Mock
         private ExternalSystemConnector connector;
 
-        // Vložíme mock konektoru do TransactionService
+        // Vloží mock konektoru do TransactionService
         @InjectMocks
         private TransactionService transactionService;
 
@@ -72,7 +72,7 @@ public class TransactionServiceTest {
 
         @Test
         void shouldHandleExternalApiFailure() {
-                // Nastavení Mocka: Simulujeme neúspěšnou odpověď z externího systému
+                // Nastavení Mocka: Simuluje neúspěšnou odpověď z externího systému
                 ExternalApiResponse failedResponse = new ExternalApiResponse(
                                 400,
                                 null,
@@ -82,7 +82,7 @@ public class TransactionServiceTest {
                 when(connector.sendRequest(any(ExternalApiRequest.class)))
                                 .thenReturn(Mono.just(failedResponse));
 
-                // Testujeme reaktivní tok
+                // Testuje reaktivní tok
                 StepVerifier.create(transactionService.process(internalRequest))
                                 .assertNext(response -> {
                                         // Ověření, že interní odpověď hlásí neúspěch
