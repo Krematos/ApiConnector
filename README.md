@@ -22,7 +22,7 @@ Hlavní konfigurace se nachází v souboru `src/main/resources/application.yml`.
 
 *   **Server Port**: `8080`
 *   **Externí API**:
-    *   Base URL: `http://localhost:9090` (v configu může být překlep `hhtp`, zkontrolujte prosím)
+    *   Base URL: `http://localhost:9090` 
 *   **Retry logika** (pro volání externích služeb):
     *   Maximální počet pokusů: 3
     *   Prodleva mezi pokusy: 1500 ms
