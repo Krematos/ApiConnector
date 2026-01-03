@@ -27,19 +27,19 @@ public class SecurityConfig {
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
                                                             ReactiveAuthenticationManager authManager,
                                                             ServerAuthenticationConverter authConverter) {
-        // Vytvoříme filtr pro API klíč
+        // Vytvoří filtr pro API klíč
         AuthenticationWebFilter apiKeyFilter = new AuthenticationWebFilter(authManager);
         apiKeyFilter.setServerAuthenticationConverter(authConverter);
 
         return http
-                .csrf(ServerHttpSecurity.CsrfSpec::disable) // Pro API vypínáme CSRF
+                .csrf(ServerHttpSecurity.CsrfSpec::disable) // Pro API vypíná CSRF
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/api/**").authenticated() // Vše pod /api musí být auth
                         .anyExchange().permitAll()
                 )
-                // Přidáme náš filtr před standardní autentizaci
+                // Přidá filtr před standardní autentizaci
                 .addFilterAt(apiKeyFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }
@@ -62,7 +62,7 @@ public class SecurityConfig {
             String principal = authentication.getPrincipal().toString();
 
             if (apiKey.equals(principal)) {
-                // Pokud klíč sedí, vrátíme plně autentizovaný token
+                // Pokud klíč sedí, vrátí plně autentizovaný token
                 return Mono.just(new UsernamePasswordAuthenticationToken(
                         principal,
                         null,

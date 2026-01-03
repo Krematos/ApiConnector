@@ -59,11 +59,14 @@ public class ExternalSystemConnector {
                                 .onStatus(status -> status.is4xxClientError(), clientResponse -> {
                                         // Převod 4xx chyb (které se neopakují) na vlastní výjimku
                                         return clientResponse.bodyToMono(String.class)
-                                                        .flatMap(body -> Mono.error(new externalApiException(
-                                                                        String.format("4xx Chyba od externího API (%d): %s",
-                                                                                        clientResponse.statusCode()
-                                                                                                        .value(),
-                                                                                        body))));
+                                                        .flatMap(errorBody -> {
+                                                                log.error("Chyba klienta při volání externího API: {} - {}",
+                                                                                clientResponse.statusCode(), errorBody);
+                                                                return Mono.error(new externalApiException(
+                                                                                "Chybný požadavek na externí API: "
+                                                                                                + clientResponse.statusCode(),
+                                                                                request.getTransactionId()));
+                                                        });
                                 })
                                 .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
                                         // 5xx chyby se automaticky opakují díky @Retryable.

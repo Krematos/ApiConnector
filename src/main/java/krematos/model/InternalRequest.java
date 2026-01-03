@@ -14,7 +14,7 @@ public class InternalRequest {
     // Interní unikátní ID objednávky/transakce
     private String internalOrderId;
 
-    // Částka, používáme BigDecimal pro přesné finanční operace
+    // Částka, používá BigDecimal pro přesné finanční operace
     private BigDecimal amount;
 
     // Kód měny (např. "CZK", "EUR")

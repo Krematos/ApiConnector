@@ -3,17 +3,16 @@ server:
 
 external:
   api:
-    base-url: hhtp://localhost:9090 # Skutečná URL externího API
+    base-url: http://localhost:9090 # Skutečná URL externího API
 
 connector:
   retry:
     max-attempts: 3 # Maximální počet pokusů (1 originál + 2 opakování)
     delay-ms: 1500 # Prodleva mezi pokusy v ms
 
-api:
-  security:
-    # Tento klíč bude Middleware vyžadovat v hlavičce X-API-KEY
-    key: "moje-tajne-heslo-12345"
+  # Tento klíč bude Middleware vyžadovat v hlavičce X-API-KEY
+security:
+  api-key: "moje-tajne-heslo-12345"
 
 # Pokud chcete vidět detaily o tom, jak security filtry pracují:
 logging:

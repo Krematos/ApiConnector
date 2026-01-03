@@ -25,22 +25,11 @@ public class MiddlewareController {
     // Používá Mono/Flux (reaktivní) pro neblokující chování
     @PostMapping("/transaction")
     public Mono<ResponseEntity<InternalResponse>> handleTransaction(@RequestBody InternalRequest request) {
-
+        log.info("Přijat požadavek na zpracování transakce: {}", request);
         // Zavolání servisní vrstvy
         return transactionService.process(request)
-                .map(ResponseEntity::ok) // Úspěšná odpověď 200 OK
-                .onErrorResume(RuntimeException.class, e -> {
-                    // Zde zachytí chyby po selhání všech opakování
-                    log.error("Chyba při zpracování transakce: {}", e.getMessage());
-                    // Návrat 503 Service Unavailable nebo 500 Internal Server Error
-                    return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST) // HTTP 400
-                            .body(new InternalResponse(false, e.getMessage(), request.getInternalOrderId())));
-                })
-                .onErrorResume(RuntimeException.class, e -> {
-                    log.error("Kritická chyba (5xx/Timeout): {}", e.getMessage());
-                    return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE) // HTTP 503
-                            .body(new InternalResponse(false, "Služba externího API je dočasně nedostupná.", request.getInternalOrderId())));
-                })
-                ;
+                .map(internalResponse -> ResponseEntity.ok(internalResponse)
+                );
+
     }
 }

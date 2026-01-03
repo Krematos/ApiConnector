@@ -5,11 +5,16 @@ import krematos.controller.MiddlewareController;
 import krematos.model.InternalRequest;
 import krematos.model.InternalResponse;
 import krematos.service.TransactionService;
+import krematos.security.SecurityConfig;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
@@ -20,12 +25,20 @@ import java.time.LocalDateTime;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import krematos.controller.MiddlewareController;
 
 
 
 
-@WebFluxTest(controllers = MiddlewareController.class, excludeAutoConfiguration = {Main.class})
+
+@WebFluxTest(controllers = MiddlewareController.class,
+        excludeAutoConfiguration = {
+                Main.class,
+                ReactiveSecurityAutoConfiguration.class // 1. Vypne automatickou security
+        },
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ASSIGNABLE_TYPE,
+                classes = SecurityConfig.class // 2. Ignoruje vlastní security konfiguraci
+        ))
 class  MiddlewareControllerTest {
 
     @Autowired
@@ -77,7 +90,7 @@ class  MiddlewareControllerTest {
 
         // Simulujeme ExternalApiException (která pochází z 4xx chyby konektoru)
         when(transactionService.process(any(InternalRequest.class)))
-                .thenReturn(Mono.error(new externalApiException(errorMessage)));
+                .thenReturn(Mono.error(new externalApiException(errorMessage, validRequest.getInternalOrderId())));
 
         webTestClient.post().uri(API_URL)
                 .contentType(MediaType.APPLICATION_JSON)
