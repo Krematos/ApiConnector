@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # 1. aplikace (Middleware)
+  middleware-app:
+    build: .
+    container_name: krematos-middleware
+    ports:
+      - "8080:8080" # Mapování portu ven
+    environment:
+      # Přepíše konfiguraci z application.yml pro Docker prostředí
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - API_SECURITY_KEY=moje-tajne-heslo-12345
+      - EXTERNAL_API_BASE_URL=http://host.docker.internal:9090 # Aby viděl na PC (pro mock server)
+    depends_on:
+      - rabbitmq
+    networks:
+      - krematos-net
+
+  # 2. RabbitMQ (Fronta)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: krematos-rabbitmq
+    ports:
+      - "5672:5672"   # Port pro komunikaci
+      - "15672:15672" # Port pro Management UI (web)
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - krematos-net
+
+    # 3. Prometheus (Monitoring)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: krematos-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml # Namapujeme náš config dovnitř
+    ports:
+        - "9090:9090"
+    networks:
+      - krematos-net
+
+  # NOVÉ: Grafana (Vizualizace)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: krematos-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Heslo pro přihlášení
+    depends_on:
+      - prometheus
+    networks:
+      - krematos-net
+
+networks:
+  krematos-net:
+    driver: bridge

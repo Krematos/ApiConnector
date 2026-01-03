@@ -22,3 +22,23 @@ logging:
 spring:
   main:
     allow-bean-definition-overriding: true
+  application:
+    name: krematos-middleware
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus # Povolí tyto endpointy
+  endpoint:
+    health:
+      show-details: always # Ukáže detailní info o zdraví (např. jestli běží DB a Rabbit)
+  metrics:
+    tags:
+      application: ${spring.application.name} # Přidá štítek s názvem aplikace ke všem metrikám
+    distribution:
+      percentiles-histogram:
+        http:
+          server:
+            requests: true # Povolí histogramy pro latenci (důležité pro grafy)
+
