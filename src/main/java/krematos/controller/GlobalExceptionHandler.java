@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
         InternalResponse response = new InternalResponse(
                 false,
                 ex.getMessage(), ex.getReferendeId()
-                 // Zde nemáme ID requestu, pokud ho výjimka nenese (viz tip níže)
+                 // Zde není ID requestu, pokud ho výjimka nenese
         );
 
         return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response));

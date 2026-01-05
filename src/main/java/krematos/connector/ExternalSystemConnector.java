@@ -14,8 +14,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
-
 @Slf4j
 @Component
 public class ExternalSystemConnector {
@@ -43,7 +41,7 @@ public class ExternalSystemConnector {
          * @Retryable zajistí automatické opakování pokusu (vyžaduje
          *            anotaci @EnableRetry v hlavní třídě)
          */
-        @Retryable(include = { WebClientResponseException.ServiceUnavailable.class, // 503
+        @Retryable(retryFor = { WebClientResponseException.ServiceUnavailable.class, // 503
                         WebClientResponseException.GatewayTimeout.class, // 504
                         WebClientResponseException.InternalServerError.class }, // 500
                         maxAttemptsExpression = "${connector.retry.max-attempts:3}", backoff = @Backoff(delayExpression = "${connector.retry.delay-ms:1000}"))
@@ -56,7 +54,7 @@ public class ExternalSystemConnector {
                                 .retrieve()
 
                                 // Logika pro zpracování stavových kódů:
-                                .onStatus(status -> status.is4xxClientError(), clientResponse -> {
+                                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> {
                                         // Převod 4xx chyb (které se neopakují) na vlastní výjimku
                                         return clientResponse.bodyToMono(String.class)
                                                         .flatMap(errorBody -> {
@@ -69,7 +67,7 @@ public class ExternalSystemConnector {
                                                         });
                                 })
                                 .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
-                                        // 5xx chyby se automaticky opakují díky @Retryable.
+                                        // 5xx chyby se automaticky opakují
                                         // Zde stačí vrátit standardní chybu WebClient, která vyvolá opakování.
                                         return Mono.error(WebClientResponseException.create(
                                                         clientResponse.statusCode().value(),
@@ -84,8 +82,7 @@ public class ExternalSystemConnector {
                                                 "-> Externí volání: Úspěšná odpověď pro transakci: {}",
                                                 request.getTransactionId()))
 
-                                // Logika, která se spustí po všech neúspěšných pokusech (pokud @Retryable
-                                // selhalo)
+                                // Logika, která se spustí po všech neúspěšných pokusech
                                 .onErrorResume(throwable -> {
                                     log.error("Externí volání selhalo po všech pokusech: {}", throwable.getMessage());
 

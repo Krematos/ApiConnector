@@ -36,6 +36,9 @@ public class SecurityConfig {
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll() // Swagger přístupné všem
+                        .pathMatchers("/webjars/**").permitAll() // Webjars přístupné všem
+                        .pathMatchers("/actuator/**").permitAll() // Actuator přístupné všem
                         .pathMatchers("/api/**").authenticated() // Vše pod /api musí být auth
                         .anyExchange().permitAll()
                 )

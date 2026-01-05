@@ -35,7 +35,7 @@ services:
     image: prom/prometheus:latest
     container_name: krematos-prometheus
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml # Namapujeme náš config dovnitř
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml # Namapuje config dovnitř
     ports:
         - "9090:9090"
     networks:
@@ -54,6 +54,23 @@ services:
     networks:
       - krematos-net
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: krematos-postgres
+    environment:
+      - POSTGRES_DB=krematos_db
+      - POSTGRES_USER=Krematos_User
+      - POSTGRES_PASSWORD=Krematos_Pass
+    ports:
+      - "5432:5432" # Mapování portu pro přístup zvenčí
+    networks:
+      - krematos-net
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Aby data přežila restart
+
 networks:
   krematos-net:
     driver: bridge
+
+volumes:
+    postgres_data:

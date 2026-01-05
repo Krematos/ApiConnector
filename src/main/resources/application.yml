@@ -24,6 +24,18 @@ spring:
     allow-bean-definition-overriding: true
   application:
     name: krematos-middleware
+  r2dbc:
+    url: r2dbc:postgresql://postgres:5432/krematos_db
+    username: Krematos_User
+    password: Krematos_Pass
+  datasource:
+    url: jdbc:postgresql://postgres:5432/krematos_db
+    username: Krematos_User
+    password: Krematos_Pass
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: always # Inicializace DB při startu aplikace
 
 management:
   endpoints:
