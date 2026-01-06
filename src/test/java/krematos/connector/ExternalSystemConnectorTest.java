@@ -48,7 +48,7 @@ public class ExternalSystemConnectorTest {
         when(webClientBuilder.defaultHeaders(any())).thenReturn(webClientBuilder);
         when(webClientBuilder.build()).thenReturn(webClient);
 
-        connector = new ExternalSystemConnector(webClientBuilder, "http://test-api.com");
+        connector = new ExternalSystemConnector(webClientBuilder.build(), "http://mocked-base-url");
     }
 
     @Test

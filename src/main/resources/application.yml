@@ -14,7 +14,7 @@ connector:
 security:
   api-key: "moje-tajne-heslo-12345"
 
-# Pokud chcete vidět detaily o tom, jak security filtry pracují:
+# Pokud je potřeba vidět detaily o tom, jak security filtry pracují:
 logging:
   level:
     org.springframework.security: DEBUG
@@ -44,6 +44,24 @@ spring:
         processFailedTransaction-in-0:
           destination: failed.transaction.queue
           group: my-consumer-group
+  security:
+    oauth2:
+      client:
+        registration:
+          # Název registrace (ID), které se bude používat v kódu
+          external-system-client:
+            provider: external-system-client
+            client-id: "${EXTERNAL_CLIENT_ID:my-client-id}"
+            client-secret: "${EXTERNAL_CLIENT_SECRET:my-secret}"
+            authorization-grant-type: client_credentials
+            # Scope je volitelný, záleží na externím systému
+            scope: read,write
+        provider:
+            # Detaily o poskytovateli identity
+          external-system-client:
+              # URL, kam si Spring sáhne pro token
+            token-uri: "${EXTERNAL_TOKEN_URI:https://auth.example.com/oauth/token}"
+
 
 management:
   endpoints:

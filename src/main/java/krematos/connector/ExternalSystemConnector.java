@@ -22,15 +22,14 @@ public class ExternalSystemConnector {
         private RabbitTemplate rabbitTemplate;
         private final WebClient webClient;
 
-        public ExternalSystemConnector(WebClient.Builder webClientBuilder,
+        public ExternalSystemConnector(WebClient externalWebClient,
                         @Value("${external.api.base-url}") String baseUrl) {
-                this.webClient = webClientBuilder
+                this.webClient = externalWebClient.mutate()
                                 .baseUrl(baseUrl)
                                 .defaultHeaders(headers -> {
                                         headers.add("Content-Type", "application/json");
                                         headers.add("Accept", "application/json");
                                         headers.add("User-Agent", "Krematos-Middleware-Connector/1.0");
-                                        headers.setBearerAuth("your-api-token-here"); // Pokud je potřeba autentizace
                                 })
                                 .build();
         }
