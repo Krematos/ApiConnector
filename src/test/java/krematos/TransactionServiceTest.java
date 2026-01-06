@@ -1,14 +1,15 @@
 package krematos;
 
+import krematos.connector.ExternalApiException;
 import krematos.connector.ExternalSystemConnector;
-import krematos.model.ExternalApiRequest;
-import krematos.model.ExternalApiResponse;
-import krematos.model.InternalRequest;
-import krematos.model.InternalResponse;
+import krematos.model.*;
+import krematos.repository.TransactionRepository;
 import krematos.service.TransactionService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,100 +17,145 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-public class TransactionServiceTest {
-        // Mockuje konektor, aby netestoval skutečné volání API
+@ExtendWith(MockitoExtension.class) // Použití JUnit 5 s Mockito
+class TransactionServiceTest {
+
         @Mock
-        private ExternalSystemConnector connector;
+        private ExternalSystemConnector externalSystemConnector;
 
-        // Vloží mock konektoru do TransactionService
+        @Mock
+        private TransactionRepository transactionRepository;
+
         @InjectMocks
         private TransactionService transactionService;
 
-        private InternalRequest internalRequest;
+        // Testovací data
+        private InternalRequest validRequest;
+        private TransactionAudit pendingAudit;
 
         @BeforeEach
         void setUp() {
-                // Inicializace testovacího interního požadavku
-                internalRequest = new InternalRequest(
-                                "INT-ORDER-12345",
-                                new BigDecimal("100.00"),
-                                "CZK",
-                                "PAYMENT", // Toto se transformuje na "001"
-                                LocalDateTime.of(2025, 12, 13, 10, 0));
+                // Příprava dat před každým testem
+                validRequest = new InternalRequest(
+                        "ORDER-123",
+                        BigDecimal.valueOf(1000.0),
+                        "CZK",
+                        "PAYMENT",
+                        null
+                );
+
+                pendingAudit = TransactionAudit.builder()
+                        .id(1L)
+                        .internalOrderId("ORDER-123")
+                        .status(AuditStatus.PENDING.name())
+                        .build();
         }
 
         @Test
-        void shouldProcessTransactionSuccessfully() {
-                // Nastavení Mocka: Když je zavolán connector.sendRequest, vrátí Mono s úspěšnou
-                // odpovědí
-                ExternalApiResponse externalResponse = new ExternalApiResponse(
-                                200,
-                                "CONF-ABC-789",
-                                "COMPLETED",
-                                150L);
+        @DisplayName("ÚSPĚCH: Transakce projde, uloží se audit a vrátí response")
+        void process_Success() {
+                // 1. MOCK: Uložení PENDING do DB
+                when(transactionRepository.save(any(TransactionAudit.class)))
+                        .thenReturn(Mono.just(pendingAudit));
 
-                when(connector.sendRequest(any(ExternalApiRequest.class)))
-                                .thenReturn(Mono.just(externalResponse));
+                // 2. MOCK: Úspěšné volání externího API
+                ExternalApiResponse apiResponse = new ExternalApiResponse(
+                        200,
+                        "OK",
+                        "COMPLETED",
+                        Instant.now().toEpochMilli()
+                );
+                when(externalSystemConnector.sendRequest(any(ExternalApiRequest.class)))
+                        .thenReturn(Mono.just(apiResponse));
 
-                // Testujeme reaktivní tok
-                StepVerifier.create(transactionService.process(internalRequest))
-                                .assertNext(response -> {
-                                        // Ověření úspěšné transformace
-                                        assertTrue(response.isSuccess());
-                                        assertTrue(response.getMessage().contains("CONF-ABC-789"));
-                                        assertTrue(response.getInternalReferenceId().equals("INT-ORDER-12345"));
-                                })
-                                .verifyComplete();
+                // 3. Spuštění testu pomocí StepVerifier
+                StepVerifier.create(transactionService.process(validRequest))
+                        .assertNext(response -> {
+                                // Ověření návratové hodnoty
+                                assertEquals(true, response.isSuccess());
+                                assertEquals("ORDER-123", response.getInternalReferenceId());
+                        })
+                        .verifyComplete();
+
+                // 4. Ověření interakcí (Verify)
+                // Repository se musí volat 2x (1x PENDING, 1x SUCCESS)
+                verify(transactionRepository, times(2)).save(any(TransactionAudit.class));
+                verify(externalSystemConnector, times(1)).sendRequest(any(ExternalApiRequest.class));
         }
 
         @Test
-        void shouldHandleExternalApiFailure() {
-                // Nastavení Mocka: Simuluje neúspěšnou odpověď z externího systému
-                ExternalApiResponse failedResponse = new ExternalApiResponse(
-                                400,
-                                null,
-                                "INVALID_DATA",
-                                50L);
+        @DisplayName("CHYBA API: Externí systém vrátí chybu, audit se uloží jako FAILED")
+        void process_ExternalApiFailure() {
+                // 1. MOCK: Uložení PENDING
+                when(transactionRepository.save(any(TransactionAudit.class)))
+                        .thenReturn(Mono.just(pendingAudit));
 
-                when(connector.sendRequest(any(ExternalApiRequest.class)))
-                                .thenReturn(Mono.just(failedResponse));
+                // 2. MOCK: Externí API vyhodí chybu
+                when(externalSystemConnector.sendRequest(any()))
+                        .thenReturn(Mono.error(new RuntimeException("Connection timed out")));
 
-                // Testuje reaktivní tok
-                StepVerifier.create(transactionService.process(internalRequest))
-                                .assertNext(response -> {
-                                        // Ověření, že interní odpověď hlásí neúspěch
-                                        assertFalse(response.isSuccess());
-                                        assertTrue(response.getMessage().contains("INVALID_DATA"));
-                                })
-                                .verifyComplete();
+                // 3. Spuštění testu - očekává chybu
+                StepVerifier.create(transactionService.process(validRequest))
+                        .expectErrorMatches(throwable ->
+                                throwable instanceof RuntimeException &&
+                                        throwable.getMessage().equals("Connection timed out")
+                        )
+                        .verify();
+
+                // 4. Ověření, že se uložil stav FAILED
+                // Použije ArgumentCaptor, aby zkontroloval, s jakým stavem se repo volalo podruhé
+                ArgumentCaptor<TransactionAudit> auditCaptor = ArgumentCaptor.forClass(TransactionAudit.class);
+                verify(transactionRepository, times(2)).save(auditCaptor.capture());
+
+                // Poslední uložený stav musí být FAILED
+                TransactionAudit failedAudit = auditCaptor.getAllValues().get(1);
+                assertEquals(AuditStatus.FAILED.name(), failedAudit.getStatus());
+                assertEquals("Connection timed out", failedAudit.getDetails());
         }
 
         @Test
-        void shouldMapServiceTypesCorrectly() {
-                // Prepare request with specific service type
-                InternalRequest premiumRequest = new InternalRequest(
-                                "INT-PREMIUM",
-                                new BigDecimal("200.00"),
-                                "USD",
-                                "PREMIUM",
-                                LocalDateTime.now());
+        @DisplayName("VALIDACE: Neplatná částka (<= 0) vyhodí chybu ihned")
+        void process_InvalidAmount() {
+                InternalRequest invalidRequest = new InternalRequest(
+                        "ORDER-BAD",
+                        BigDecimal.ZERO, // Neplatná částka
+                        "CZK",
+                        "PAYMENT",
+                        null
+                );
 
-                ExternalApiResponse successResponse = new ExternalApiResponse(200, "OK", "COMPLETED", 100L);
+                StepVerifier.create(transactionService.process(invalidRequest))
+                        .expectError(ExternalApiException.class) // Očekává vlastní výjimku
+                        .verify();
 
-                // Capture the argument passed to connector
-                when(connector.sendRequest(any(ExternalApiRequest.class)))
-                                .thenReturn(Mono.just(successResponse));
+                // Důležité: Repository ani Connector se nesmí volat!
+                verifyNoInteractions(transactionRepository);
+                verifyNoInteractions(externalSystemConnector);
+        }
 
-                StepVerifier.create(transactionService.process(premiumRequest))
-                                .expectNextMatches(InternalResponse::isSuccess)
-                                .verifyComplete();
+        @Test
+        @DisplayName("EDGE CASE: Externí systém vrátí prázdné Mono (switchIfEmpty)")
+        void process_EmptyResponse() {
+                // 1. MOCK: Uložení PENDING
+                when(transactionRepository.save(any(TransactionAudit.class)))
+                        .thenReturn(Mono.just(pendingAudit));
+
+                // 2. MOCK: Prázdná odpověď
+                when(externalSystemConnector.sendRequest(any()))
+                        .thenReturn(Mono.empty());
+
+                // 3. Spuštění
+                StepVerifier.create(transactionService.process(validRequest))
+                        .expectErrorMatches(e -> e.getMessage().contains("Prázdná odpověď"))
+                        .verify();
+
+                // 4. Ověření, že se to zalogovalo jako FAILED
+                verify(transactionRepository, times(2)).save(any());
         }
 }

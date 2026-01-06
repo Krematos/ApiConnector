@@ -45,8 +45,7 @@ public class MiddlewareController {
         log.info("Přijat požadavek na zpracování transakce: {}", request);
         // Zavolání servisní vrstvy
         return transactionService.process(request)
-                .map(internalResponse -> ResponseEntity.ok(internalResponse)
-                );
+                .map(ResponseEntity::ok); // Zabalí do ResponseEntity s 200 OK
 
     }
 }

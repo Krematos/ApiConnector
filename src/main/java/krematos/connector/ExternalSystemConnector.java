@@ -60,7 +60,7 @@ public class ExternalSystemConnector {
                                                         .flatMap(errorBody -> {
                                                                 log.error("Chyba klienta při volání externího API: {} - {}",
                                                                                 clientResponse.statusCode(), errorBody);
-                                                                return Mono.error(new externalApiException(
+                                                                return Mono.error(new ExternalApiException(
                                                                                 "Chybný požadavek na externí API: "
                                                                                                 + clientResponse.statusCode(),
                                                                                 request.getTransactionId()));

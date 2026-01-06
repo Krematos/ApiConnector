@@ -1,5 +1,6 @@
 package krematos.service;
 
+import krematos.connector.ExternalApiException;
 import krematos.connector.ExternalSystemConnector;
 import krematos.model.*;
 import krematos.repository.TransactionRepository;
@@ -24,15 +25,32 @@ public class TransactionService {
     /**
      * Hlavní "Orchestrátor".
      * čitelný tok: Ulož -> Zavolej -> Aktualizuj (nebo zpracuj chybu).
+     * rozložen do kroků pro lepší srozumitelnost a údržbu.
      */
     public Mono<InternalResponse> process(InternalRequest request) {
         log.info("--- ZAČÁTEK TRANSAKCE: {} ---", request.getInternalOrderId());
 
-        return createPendingAudit(request) // Krok 1: Audit (PENDING)
-                .flatMap(audit -> callExternalSystem(request) // Krok 2: Volání API
+        return validateRequest(request) // Krok 1: Audit (PENDING)
+                .flatMap(this::createPendingAudit) // Krok 1: Vytvoření záznamu v DB
+                .flatMap(audit -> timedExternalCall(request) // Krok 2: Měření latence externího API
+                        .switchIfEmpty(Mono.error(new ExternalApiException("Prázdná odpověď od externího systému", request.getInternalOrderId()))) // switchIfEmpty pro prázdnou odpověď
                         .flatMap(response -> handleSuccess(audit, response, request)) // Krok 3a: Úspěch
                         .onErrorResume(error -> handleFailure(audit, error))          // Krok 3b: Chyba
                 );
+    }
+
+    // --- Předběžná validace požadavku ---
+    private Mono<InternalRequest> validateRequest(InternalRequest request) {
+        if (request.getAmount() == null || request.getAmount().doubleValue() <= 0) {
+            log.warn("Neplatná částka: {}", request.getAmount());
+            return Mono.error(new ExternalApiException("Neplatná částka v požadavku", request.getInternalOrderId()));
+        }
+        if (request.getCurrencyCode() == null || request.getCurrencyCode().isEmpty()) {
+            log.warn("Chybějící měnový kód");
+            return Mono.error(new ExternalApiException("Chybějící měnový kód v požadavku", request.getInternalOrderId()));
+        }
+
+        return Mono.just(request);
     }
 
     // --- KROK 1: Vytvoření záznamu v DB ---
@@ -42,7 +60,7 @@ public class TransactionService {
                 .amount(request.getAmount())
                 .currency(request.getCurrencyCode())
                 .serviceType(request.getServiceType())
-                .status("PENDING") // Důležité: Začíná jako PENDING
+                .status(AuditStatus.PENDING.name()) // Důležité: Začíná jako PENDING
                 .createdAt(Instant.now())
                 .build();
 
@@ -51,15 +69,22 @@ public class TransactionService {
     }
 
     // --- KROK 2: Volání externího systému ---
-    private Mono<ExternalApiResponse> callExternalSystem(InternalRequest request) {
+
+
+    // --- KROK 2: Měření latence externího volání
+    private Mono<ExternalApiResponse> timedExternalCall(InternalRequest request) {
         ExternalApiRequest externalRequest = mapToExternal(request);
+        Instant startTime = Instant.now();
         return externalSystemConnector.sendRequest(externalRequest)
-                .doOnSuccess(response -> log.debug("Externí API volání úspěšné pro transakci: {}", request.getInternalOrderId()));
+                .doOnSuccess(resp -> log.info("Externí volání dokončeno za {} ms",
+                        Instant.now().toEpochMilli() - startTime.toEpochMilli()))
+                .doOnError(error -> log.error("Chyba při externím volání po {} ms: {}",
+                        Instant.now().toEpochMilli() - startTime.toEpochMilli(), error.getMessage()));
     }
 
     // --- KROK 3a: Zpracování úspěchu ---
     private Mono<InternalResponse> handleSuccess(TransactionAudit audit, ExternalApiResponse response, InternalRequest request) {
-        audit.setStatus("SUCCESS");
+        audit.setStatus(AuditStatus.SUCCESS.name());
         audit.setDetails("Potvrzeno ID: " + response.getConfirmationId());
         audit.setUpdatedAt(Instant.now());
 
@@ -70,7 +95,7 @@ public class TransactionService {
 
     // --- KROK 3b: Zpracování chyby ---
     private Mono<InternalResponse> handleFailure(TransactionAudit audit, Throwable error) {
-        audit.setStatus("FAILED");
+        audit.setStatus(AuditStatus.FAILED.name());
         audit.setDetails(error.getMessage());
         audit.setUpdatedAt(Instant.now());
 
@@ -83,10 +108,9 @@ public class TransactionService {
     // --- Mappery (pomocné metody) ---
 
     private ExternalApiRequest mapToExternal(InternalRequest internal) {
-        // Pozor: Zde musí převést BigDecimal na double, protože ExternalApiRequest má double
         return new ExternalApiRequest(
                 internal.getInternalOrderId(),
-                internal.getAmount().doubleValue(), // <--- Převod
+                internal.getAmount(),
                 internal.getCurrencyCode()
         );
     }

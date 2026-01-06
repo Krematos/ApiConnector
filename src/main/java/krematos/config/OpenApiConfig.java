@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Configuration;
         security = @SecurityRequirement(name = "ApiKeyAuth")
 )
 @SecurityScheme(
-        name = "ApiKeyAuth",        // Název schématu (použijeme v @SecurityRequirement)
+        name = "ApiKeyAuth",        // Název schématu (použije v @SecurityRequirement)
         type = SecuritySchemeType.APIKEY,
         in = SecuritySchemeIn.HEADER,
         paramName = "X-API-KEY"     // Název hlavičky, kterou Swagger pošle

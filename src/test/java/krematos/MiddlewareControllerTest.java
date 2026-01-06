@@ -1,6 +1,7 @@
 package krematos;
 
-import krematos.connector.externalApiException;
+
+import krematos.connector.ExternalApiException;
 import krematos.controller.MiddlewareController;
 import krematos.model.InternalRequest;
 import krematos.model.InternalResponse;
@@ -90,7 +91,7 @@ class  MiddlewareControllerTest {
 
         // Simulujeme ExternalApiException (která pochází z 4xx chyby konektoru)
         when(transactionService.process(any(InternalRequest.class)))
-                .thenReturn(Mono.error(new externalApiException(errorMessage, validRequest.getInternalOrderId())));
+                .thenReturn(Mono.error(new ExternalApiException(errorMessage, validRequest.getInternalOrderId())));
 
         webTestClient.post().uri(API_URL)
                 .contentType(MediaType.APPLICATION_JSON)

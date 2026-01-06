@@ -36,6 +36,14 @@ spring:
   sql:
     init:
       mode: always # Inicializace DB při startu aplikace
+  cloud:
+    function:
+      definition: processFailedTransaction
+    stream:
+      bindings:
+        processFailedTransaction-in-0:
+          destination: failed.transaction.queue
+          group: my-consumer-group
 
 management:
   endpoints:
@@ -53,4 +61,5 @@ management:
         http:
           server:
             requests: true # Povolí histogramy pro latenci (důležité pro grafy)
+
 

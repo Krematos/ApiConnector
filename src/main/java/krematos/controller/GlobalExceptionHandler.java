@@ -1,6 +1,6 @@
 package krematos.controller;
 
-import krematos.connector.externalApiException;
+import krematos.connector.ExternalApiException;
 import krematos.model.InternalResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,8 +13,8 @@ import reactor.core.publisher.Mono;
 @RestControllerAdvice // Globální ošetření výjimek pro všechny kontrolery
 public class GlobalExceptionHandler {
     // Zachytí externalApiException a vrátí vhodnou odpověď klientovi
-    @ExceptionHandler(externalApiException.class)
-    public Mono<ResponseEntity<InternalResponse>> handleExternalApiException(externalApiException ex) {
+    @ExceptionHandler(ExternalApiException.class)
+    public Mono<ResponseEntity<InternalResponse>> handleExternalApiException(ExternalApiException ex) {
         log.warn("Chyba klienta/validace: {}", ex.getMessage());
 
         InternalResponse response = new InternalResponse(

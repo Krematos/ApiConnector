@@ -74,6 +74,6 @@ public class ExternalSystemConnectorTest {
     }
 
     private ExternalApiRequest createTestRequest() {
-        return new ExternalApiRequest("REF-1", 50.00, "001");
+        return new ExternalApiRequest("REF-1", BigDecimal.valueOf(50), "001");
     }
 }

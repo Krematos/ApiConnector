@@ -26,4 +26,5 @@ public class TransactionAudit {
     private String details;
     private Instant createdAt;
     private Instant updatedAt;
+
 }

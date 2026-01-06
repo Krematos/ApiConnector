@@ -1,67 +1,51 @@
 package krematos.consumer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import krematos.model.ExternalApiRequest;
 import krematos.model.InternalRequest;
-import krematos.model.InternalResponse;
 import krematos.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
-import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.Receiver;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.function.Consumer;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class FailedTransactionConsumer implements CommandLineRunner {
+public class FailedTransactionConsumer {
 
-    private final Receiver receiver;
     private final TransactionService transactionService;
-    private final ObjectMapper objectMapper;
 
-    private final String QUEUE_NAME = "failed.transaction.queue";
+    // Framework automaticky deserializuje JSON na ExternalApiRequest
+    @Bean
+    public Consumer<ExternalApiRequest> processFailedTransaction() {
+        return externalApiRequest -> {
+            log.info("Přijata zpráva: {}", externalApiRequest);
 
-    @Override
-    public void run(String... args){
-        log.info("Spouštím spotřebitele pro frontu: {}", QUEUE_NAME);
-        receiver.consumeAutoAck(QUEUE_NAME)
-            .subscribe(delivery -> {
-                try {
-                    String json = new String(delivery.getBody());
-                    log.info("Přijatá zpráva z fronty {}: {}", QUEUE_NAME, json);
+            InternalRequest internalRequest = mapToInternal(externalApiRequest);
 
-                    // Deserializace JSON na InternalRequest
-                    ExternalApiRequest externalApiRequest = objectMapper.readValue(json, ExternalApiRequest.class);
-
-                    // Mapování na InternalRequest
-                    InternalRequest internalRequest = new InternalRequest(
-                            externalApiRequest.getTransactionId(),
-                            BigDecimal.valueOf(externalApiRequest.getAmount()),
-                            externalApiRequest.getCurrency(),
-                            "RETRY_SERVICE",
-                            LocalDateTime.now()
-                    );
-
-                    // Zpracování transakce
-                    transactionService.process(internalRequest)
-                            .subscribe(success -> {log.info("RETRY ÚSPĚŠNÉ!  Transakce {} byla zpracována.", internalRequest.getInternalOrderId());
-                            ((AcknowledgableDelivery) delivery).ack();
-                                    },
-                                    error -> {
-                                        log.error("RETRY SELHALO: {}. Zpráva zůstává ve frontě (nebo ji lze poslat do Dead Letter).", error.getMessage());
-                                        ((AcknowledgableDelivery) delivery).ack();
-                                    });
-
-                } catch (Exception e) {
-                    log.error("Chyba při zpracování zprávy z fronty {}: {}", e);
-                    ((AcknowledgableDelivery) delivery).ack();
-                }
-            });
+            // Blokující volání pro zachování transakčnosti (nebo .block() pokud je service reaktivní)
+            // Spring Cloud Stream se postará o ACK/NACK automaticky podle toho, zda vyletí výjimka.
+            transactionService.process(internalRequest)
+                    .doOnSuccess(s -> log.info("RETRY ÚSPĚŠNÉ"))
+                    .doOnError(e -> log.error("RETRY SELHALO"))
+                    .block(); // V rámci Streamu je často lepší počkat na výsledek
+        };
     }
+
+    private InternalRequest mapToInternal(ExternalApiRequest request) {
+        return new InternalRequest(
+                request.getTransactionId(),
+                request.getAmount(),
+                request.getCurrency(),
+                "RETRY_SERVICE",
+                LocalDateTime.now()
+        );
+    }
+
+
+
 }
