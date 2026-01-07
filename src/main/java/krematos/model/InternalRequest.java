@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Data
@@ -24,5 +25,5 @@ public class InternalRequest {
     private String serviceType;
 
     // Datum a čas vytvoření požadavku
-    private LocalDateTime requestedAt;
+    private Instant requestedAt;
 }

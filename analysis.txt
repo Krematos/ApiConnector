@@ -1,0 +1,89 @@
+[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for krematos:IntegracniMiddleware:jar:1.0-SNAPSHOT
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: io.projectreactor.rabbitmq:reactor-rabbitmq:jar -> duplicate declaration of version 1.5.6 @ line 144, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: io.projectreactor:reactor-test:jar -> duplicate declaration of version (?) @ line 176, column 21
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] 
+[INFO] -------------------< krematos:IntegracniMiddleware >--------------------
+[INFO] Building api-connector 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> dependency:3.8.1:analyze (default-cli) > test-compile @ IntegracniMiddleware >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ IntegracniMiddleware ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ IntegracniMiddleware ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ IntegracniMiddleware ---
+[INFO] skip non existing resourceDirectory C:\Users\hmac1\Desktop\My shitts\It kurz\SpringJava\IntegracniMiddleware\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ IntegracniMiddleware ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< dependency:3.8.1:analyze (default-cli) < test-compile @ IntegracniMiddleware <<<
+[INFO] 
+[INFO] 
+[INFO] --- dependency:3.8.1:analyze (default-cli) @ IntegracniMiddleware ---
+[WARNING] Used undeclared dependencies found:
+[WARNING]    org.springframework.security:spring-security-core:jar:6.5.7:compile
+[WARNING]    org.assertj:assertj-core:jar:3.27.6:test
+[WARNING]    org.springframework:spring-web:jar:6.2.14:compile
+[WARNING]    com.rabbitmq:amqp-client:jar:5.25.0:compile
+[WARNING]    org.springframework.boot:spring-boot:jar:3.5.8:compile
+[WARNING]    org.springframework:spring-test:jar:6.2.14:test
+[WARNING]    org.springframework:spring-context:jar:6.2.14:compile
+[WARNING]    org.slf4j:slf4j-api:jar:2.0.17:compile
+[WARNING]    org.springframework.security:spring-security-oauth2-client:jar:6.5.7:compile
+[WARNING]    org.springframework:spring-jdbc:jar:6.2.14:compile
+[WARNING]    net.javacrumbs.shedlock:shedlock-core:jar:5.13.0:compile
+[WARNING]    org.springframework.boot:spring-boot-test-autoconfigure:jar:3.5.8:test
+[WARNING]    org.springframework:spring-webflux:jar:6.2.14:compile
+[WARNING]    org.springframework.data:spring-data-commons:jar:3.5.6:compile
+[WARNING]    com.squareup.okhttp3:okhttp:jar:4.12.0:test
+[WARNING]    org.springframework.boot:spring-boot-autoconfigure:jar:3.5.8:compile
+[WARNING]    org.mockito:mockito-junit-jupiter:jar:5.17.0:test
+[WARNING]    org.junit.jupiter:junit-jupiter-api:jar:5.12.2:test
+[WARNING]    org.mockito:mockito-core:jar:5.17.0:test
+[WARNING]    org.springframework.amqp:spring-rabbit:jar:3.2.8:compile
+[WARNING]    io.projectreactor:reactor-core:jar:3.7.13:compile
+[WARNING]    org.springframework.security:spring-security-web:jar:6.5.7:compile
+[WARNING]    org.springframework:spring-beans:jar:6.2.14:compile
+[WARNING]    org.springframework.amqp:spring-amqp:jar:3.2.8:compile
+[WARNING]    org.springframework.data:spring-data-relational:jar:3.5.6:compile
+[WARNING]    com.fasterxml.jackson.core:jackson-annotations:jar:2.19.4:compile
+[WARNING]    org.springframework.security:spring-security-config:jar:6.5.7:compile
+[WARNING]    org.springframework.data:spring-data-r2dbc:jar:3.5.6:compile
+[WARNING]    org.reactivestreams:reactive-streams:jar:1.0.4:compile
+[WARNING]    io.swagger.core.v3:swagger-annotations-jakarta:jar:2.2.41:compile
+[WARNING]    org.springframework.boot:spring-boot-test:jar:3.5.8:test
+[WARNING] Unused declared dependencies found:
+[WARNING]    org.springframework.boot:spring-boot-starter-webflux:jar:3.5.8:compile
+[WARNING]    org.springframework.boot:spring-boot-starter-aop:jar:3.5.8:compile
+[WARNING]    org.springframework.boot:spring-boot-starter-test:jar:3.5.8:test
+[WARNING]    org.springframework.boot:spring-boot-starter-amqp:jar:3.5.8:compile
+[WARNING]    org.springframework.boot:spring-boot-starter-security:jar:3.5.8:compile
+[WARNING]    org.springframework.security:spring-security-test:jar:6.5.7:test
+[WARNING]    org.springdoc:springdoc-openapi-starter-webflux-ui:jar:2.8.15:compile
+[WARNING]    org.springframework.boot:spring-boot-starter-data-r2dbc:jar:3.5.8:compile
+[WARNING]    org.postgresql:r2dbc-postgresql:jar:1.0.9.RELEASE:runtime
+[WARNING]    org.springframework.boot:spring-boot-starter-jdbc:jar:3.5.8:compile
+[WARNING]    org.postgresql:postgresql:jar:42.7.8:compile
+[WARNING]    org.springframework.boot:spring-boot-starter-actuator:jar:3.5.8:compile
+[WARNING]    io.micrometer:micrometer-registry-prometheus:jar:1.15.6:runtime
+[WARNING]    org.springframework.boot:spring-boot-starter-oauth2-client:jar:3.5.8:compile
+[WARNING]    org.testcontainers:r2dbc:jar:1.20.4:test
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.962 s
+[INFO] Finished at: 2026-01-07T13:51:07+01:00
+[INFO] ------------------------------------------------------------------------

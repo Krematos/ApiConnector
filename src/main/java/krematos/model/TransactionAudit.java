@@ -16,6 +16,9 @@ import java.time.Instant;
 @Builder
 @Table("transaction_audit")
 public class TransactionAudit {
+
+    private boolean notificationSent; // Defaultně false
+
     @Id
     private Long id;
     private String internalOrderId;

@@ -22,6 +22,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,7 +73,7 @@ class ApplicationIntegrationTest {
                 new BigDecimal("100.50"),
                 "USD",
                 "PAYMENT",
-                LocalDateTime.now());
+                Instant.now());
 
         // 2. Mock External API Response
         mockWebServer.enqueue(new MockResponse()

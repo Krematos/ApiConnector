@@ -61,6 +61,11 @@ spring:
           external-system-client:
               # URL, kam si Spring sáhne pro token
             token-uri: "${EXTERNAL_TOKEN_URI:https://auth.example.com/oauth/token}"
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
 
 
 management:

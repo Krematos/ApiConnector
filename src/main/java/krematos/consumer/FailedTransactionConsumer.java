@@ -8,9 +8,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
-import java.util.function.Consumer;
+import java.time.Instant;
+import java.util.function.Function;
 
 @Slf4j
 @Component
@@ -19,21 +21,26 @@ public class FailedTransactionConsumer {
 
     private final TransactionService transactionService;
 
-    // Framework automaticky deserializuje JSON na ExternalApiRequest
+
+    //  Function<Flux, Mono<Void>> pro plně reaktivní stream
     @Bean
-    public Consumer<ExternalApiRequest> processFailedTransaction() {
-        return externalApiRequest -> {
-            log.info("Přijata zpráva: {}", externalApiRequest);
+    public Function<Flux<ExternalApiRequest>, Mono<Void>> processFailedTransaction() {
+        return flux -> flux
+                .flatMap(this::processSingleRequest) // flatMap zpracovává paralelně, concatMap by šel popořadě
+                .then(); // Po zpracování celého streamu (nebo při běhu) vrací signál dokončení
+    }
 
-            InternalRequest internalRequest = mapToInternal(externalApiRequest);
+    private Mono<Void> processSingleRequest(ExternalApiRequest externalApiRequest) {
+        log.info("RETRY CONSUMER: Přijata zpráva k opakování: {}", externalApiRequest.getTransactionId());
 
-            // Blokující volání pro zachování transakčnosti (nebo .block() pokud je service reaktivní)
-            // Spring Cloud Stream se postará o ACK/NACK automaticky podle toho, zda vyletí výjimka.
-            transactionService.process(internalRequest)
-                    .doOnSuccess(s -> log.info("RETRY ÚSPĚŠNÉ"))
-                    .doOnError(e -> log.error("RETRY SELHALO"))
-                    .block(); // V rámci Streamu je často lepší počkat na výsledek
-        };
+        InternalRequest internalRequest = mapToInternal(externalApiRequest);
+
+        // Volá service.process (který vrací Mono)
+        return transactionService.process(internalRequest)
+                .doOnSuccess(s -> log.info("RETRY ÚSPĚŠNÉ pro ID: {}", externalApiRequest.getTransactionId()))
+                .doOnError(e -> log.error("RETRY SELHALO pro ID: {}. Chyba: {}", externalApiRequest.getTransactionId(), e.getMessage()))
+                .onErrorResume(e -> Mono.empty()) // Chybu "spolkne", aby neshodila celý stream (zpráva se zahodí nebo půjde do DLQ podle nastavení Spring Cloud Stream)
+                .then();
     }
 
     private InternalRequest mapToInternal(ExternalApiRequest request) {
@@ -42,7 +49,7 @@ public class FailedTransactionConsumer {
                 request.getAmount(),
                 request.getCurrency(),
                 "RETRY_SERVICE",
-                LocalDateTime.now()
+                Instant.now()
         );
     }
 

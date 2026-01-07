@@ -21,6 +21,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -58,7 +59,7 @@ class  MiddlewareControllerTest {
                 new BigDecimal("50.00"),
                 "EUR",
                 "PAYMENT",
-                LocalDateTime.now()
+                Instant.now()
         );
     }
 
