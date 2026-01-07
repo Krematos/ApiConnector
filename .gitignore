@@ -43,3 +43,5 @@ application-prod.yml
 
 test_output.txt
 test_output_2.txt
+
+analysis.txt

@@ -13,7 +13,7 @@
 | **Java** | 21 | Programovací jazyk |
 | **Spring Boot** | 3.5.8 | Framework |
 | **WebFlux** | - | Reaktivní programování (neblokující I/O) |
-| **Spring Security** | - | Zabezpečení (API Key autentizace) |
+| **Spring Security** | - | Zabezpečení (API Key autentizace), OAuth2 Client |
 | **R2DBC + PostgreSQL** | - | Reaktivní přístup k databázi |
 | **RabbitMQ** | 3.x | Message broker pro fallback |
 | **ShedLock** | 5.13.0 | Distribuované zamykání plánovaných úloh |
@@ -57,16 +57,19 @@ IntegracniMiddleware/
 │   ├── config/
 │   │   ├── OpenApiConfig.java             # Konfigurace Swagger UI
 │   │   ├── RabbitMQConfig.java            # Konfigurace RabbitMQ
-│   │   └── SchedulerConfig.java           # Konfigurace ShedLock
+│   │   ├── SchedulerConfig.java           # Konfigurace ShedLock
+│   │   └── WebClientConfig.java           # Konfigurace WebClient a OAuth2
 │   ├── connector/
 │   │   ├── ExternalSystemConnector.java   # Volání externího API
-│   │   └── externalApiException.java      # Vlastní výjimka
+│   │   ├── ExternalApiException.java      # Vlastní výjimka
+│   │   └── FailedTransactionRescuer.java  # Záchrana zaseklých transakcí
 │   ├── consumer/
 │   │   └── FailedTransactionConsumer.java # Zpracování neúspěšných transakcí
 │   ├── controller/
 │   │   ├── MiddlewareController.java      # REST API endpoint
 │   │   └── GlobalExceptionHandler.java    # Globální handler výjimek
 │   ├── model/
+│   │   ├── AuditStatus.java               # Enum stavu auditu
 │   │   ├── InternalRequest.java           # DTO pro příchozí požadavek
 │   │   ├── InternalResponse.java          # DTO pro odpověď
 │   │   ├── ExternalApiRequest.java        # DTO pro externí API požadavek
@@ -157,6 +160,12 @@ Middleware automaticky opakuje požadavky při selhání externího API:
 | **Retry na** | 500, 503, 504 | HTTP status kódy vyvolávající retry |
 
 Po vyčerpání všech pokusů je transakce odeslána do **RabbitMQ fronty** `failed.transactions.exchange` pro pozdější zpracování.
+
+### Failed Transaction Rescuer
+Aplikace obsahuje komponentu `FailedTransactionRescuer`, která běží jako plánovaná úloha (každou minutu).
+1.  Vyhledá transakce ve stavu `FAILED`, které jsou starší než 1 minuta ("zaseklé" nebo nezpracované).
+2.  Automaticky je odešle do Dead Letter Queue (DLQ) pro alertování nebo manuální zásah.
+3.  Označí je v databázi jako notifikované.
 
 ---
 
@@ -313,7 +322,9 @@ Hlavní konfigurační parametry (nastavitelné přes `application.yml` nebo pro
 | `external.api.base-url` | http://localhost:9090 | URL externího API |
 | `connector.retry.max-attempts` | 3 | Počet opakování |
 | `connector.retry.delay-ms` | 1500 | Prodleva mezi pokusy (ms) |
+| `connector.retry.delay-ms` | 1500 | Prodleva mezi pokusy (ms) |
 | `api.security.key` | moje-tajne-heslo-12345 | API klíč |
+| `spring.security.oauth2.client...` | - | Konfigurace OAuth2 klienta (client-id, secret, token-uri) |
 
 ---
 

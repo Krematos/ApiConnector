@@ -13,7 +13,7 @@
 | **Java** | 21 | Programming Language |
 | **Spring Boot** | 3.5.8 | Framework |
 | **WebFlux** | - | Reactive Programming (Non-blocking I/O) |
-| **Spring Security** | - | Security (API Key Authentication) |
+| **Spring Security** | - | Security (API Key Authentication), OAuth2 Client |
 | **R2DBC + PostgreSQL** | - | Reactive Database Access |
 | **RabbitMQ** | 3.x | Message Broker for Fallback |
 | **ShedLock** | 5.13.0 | Distributed Locking for Scheduled Tasks |
@@ -61,16 +61,19 @@ IntegracniMiddleware/
 │   ├── config/
 │   │   ├── OpenApiConfig.java             # Swagger UI Logging
 │   │   ├── RabbitMQConfig.java            # RabbitMQ Configuration
-│   │   └── SchedulerConfig.java           # ShedLock Configuration
+│   │   ├── SchedulerConfig.java           # ShedLock Configuration
+│   │   └── WebClientConfig.java           # WebClient and OAuth2 Configuration
 │   ├── connector/
 │   │   ├── ExternalSystemConnector.java   # External API Client
-│   │   └── externalApiException.java      # Custom Exception
+│   │   ├── ExternalApiException.java      # Custom Exception
+│   │   └── FailedTransactionRescuer.java  # Stuck Transaction Rescuer
 │   ├── consumer/
 │   │   └── FailedTransactionConsumer.java # Failed Transaction Processing
 │   ├── controller/
 │   │   ├── MiddlewareController.java      # REST API Endpoint
 │   │   └── GlobalExceptionHandler.java    # Global Exception Handler
 │   ├── model/
+│   │   ├── AuditStatus.java               # Audit Status Enum
 │   │   ├── InternalRequest.java           # DTO for Incoming Request
 │   │   ├── InternalResponse.java          # DTO for Response
 │   │   ├── ExternalApiRequest.java        # DTO for External API Request
@@ -161,6 +164,12 @@ Middleware automatically retries requests upon External API failure:
 | **Retry On** | 500, 503, 504 | HTTP status codes triggering retry |
 
 After all attempts are exhausted, the transaction is sent to the **RabbitMQ queue** `failed.transactions.exchange` for later processing.
+
+### Failed Transaction Rescuer
+The application includes a `FailedTransactionRescuer` component that runs as a scheduled task (every minute).
+1.  Finds transactions in `FAILED` status that are older than 1 minute ("stuck" or unprocessed).
+2.  Automatically sends them to the Dead Letter Queue (DLQ) for alerting or manual intervention.
+3.  Marks them as notified in the database.
 
 ---
 
@@ -317,7 +326,9 @@ Main configuration parameters (adjustable via `application.yml` or environment v
 | `external.api.base-url` | http://localhost:9090 | External API URL |
 | `connector.retry.max-attempts` | 3 | Max Retry Attempts |
 | `connector.retry.delay-ms` | 1500 | Delay between attempts (ms) |
+| `connector.retry.delay-ms` | 1500 | Delay between attempts (ms) |
 | `api.security.key` | moje-tajne-heslo-12345 | API Key |
+| `spring.security.oauth2.client...` | - | OAuth2 Client Configuration (client-id, secret, token-uri) |
 
 ---
 
