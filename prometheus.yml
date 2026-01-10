@@ -5,4 +5,4 @@ scrape_configs:
   - job_name: 'krematos-middleware'
     metrics_path: '/actuator/prometheus' # Kde aplikace vystavuje metriky
     static_configs:
-      - targets: ['middleware-app:8080'] # Název služby z docker-compose + port
+      - targets: ['host.docker.internal:8080'] # Název služby z docker-compose + port

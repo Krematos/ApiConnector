@@ -1,5 +1,6 @@
 package krematos.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.client.*;
@@ -10,16 +11,19 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 public class WebClientConfig {
 
+    /**
+     * Manager, který se stará o získávání a refreshování tokenů (OAuth2).
+     */
     @Bean
-    public ReactiveOAuth2AuthorizedClientManager auth2AuthorizedClientManager(ReactiveClientRegistrationRepository clientRegistrationRepository) {
+    public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(ReactiveClientRegistrationRepository clientRegistrationRepository) {
 
-        // Vytvoření providera, který podporuje client credentials flow
+        // Konfigurace providera pro Client Credentials flow
         ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider =
                 ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
-                        .clientCredentials()
+                        .clientCredentials() // Důležité: povoluje flow pro komunikaci server-server
                         .build();
 
-        // Vytvoření a konfigurace managera, který drží autorizované klienty
+        // Vytvoření managera
         AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager authorizedClientManager =
                 new AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager(
                         clientRegistrationRepository,
@@ -28,23 +32,34 @@ public class WebClientConfig {
         authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
 
         return authorizedClientManager;
-
     }
 
+    /**
+     * Vytvoří WebClienta, který je již nakonfigurovaný:
+     * 1. Má Base URL
+     * 2. Má výchozí hlavičky
+     * 3. Automaticky přidává OAuth2 Bearer token
+     */
     @Bean
     public WebClient externalSystemWebClient(WebClient.Builder builder,
-                                             ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
+                                             ReactiveOAuth2AuthorizedClientManager authorizedClientManager,
+                                             @Value("${external.api.base-url}") String baseUrl) {
 
         // Vytvoření filtru pro OAuth2
         ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2Client =
                 new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
 
-        // Zde nastaví výchozí registraci (aby to nebylo nutné psát u každého requestu)
-        // Název musí odpovídat tomu v application.yml (external-system-client)
+        // Nastaví výchozí registraci z application.yml (musí sedět ID registrace!)
         oauth2Client.setDefaultClientRegistrationId("external-system-client");
 
         return builder
-                .filter(oauth2Client) // Přidání filtru do WebClienta
+                .filter(oauth2Client) // Aplikace OAuth2 filtru
+                .baseUrl(baseUrl)     // Nastavení URL z configu
+                .defaultHeaders(headers -> {
+                    headers.add("Content-Type", "application/json");
+                    headers.add("Accept", "application/json");
+                    headers.add("User-Agent", "Krematos-Middleware-Connector/1.0");
+                })
                 .build();
     }
 }

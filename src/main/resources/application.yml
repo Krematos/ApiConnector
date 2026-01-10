@@ -84,5 +84,3 @@ management:
         http:
           server:
             requests: true # Povolí histogramy pro latenci (důležité pro grafy)
-
-

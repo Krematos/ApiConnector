@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS transaction_audit (
     status VARCHAR(50),
     details TEXT,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    notification_sent BOOLEAN DEFAULT FALSE
 );
 
 -- Tabulka pro ShedLock

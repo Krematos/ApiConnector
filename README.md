@@ -145,7 +145,7 @@ Aplikace využívá **API Key autentizaci**. Každý požadavek musí obsahovat 
 X-API-KEY: moje-tajne-heslo-12345
 ```
 
-> ⚠️ **Důležité**: V produkčním prostředí změňte výchozí API klíč!
+
 
 ---
 

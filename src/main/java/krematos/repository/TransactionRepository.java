@@ -20,4 +20,7 @@ public interface TransactionRepository extends R2dbcRepository<TransactionAudit,
 
     @Query("UPDATE transaction_audit SET notification_sent = TRUE WHERE id = :id")
     Mono<Void> markAsNotified(Long id);
+
+    @Query("UPDATE transaction_audit SET status = 'FAILED' AND notification_sent = false LIMIT 50")
+    Flux<TransactionAudit> findFailedAnoNotNotified();
 }

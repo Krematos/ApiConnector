@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ExternalApiResponse {
 
-    // Příklad, kde se externí API vrací "status_code" a my ho mapuje na "statusCode"
+    // Příklad, kde se externí API vrací "status_code" a mapuje ho na "statusCode"
     @JsonProperty("status_code")
     private int statusCode;
 
