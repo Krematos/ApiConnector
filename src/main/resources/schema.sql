@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS transaction_audit (
     service_type VARCHAR(50),
     status VARCHAR(50),
     details TEXT,
+    external_reference_id VARCHAR(255),
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
     notification_sent BOOLEAN DEFAULT FALSE

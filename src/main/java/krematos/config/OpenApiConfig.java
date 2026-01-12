@@ -38,11 +38,11 @@ public class OpenApiConfig {
                                 .description(appDescription)
                                 .contact(new Contact()
                                         .name("KrematosDEV")
-                                        .email("dev@krematos.cz")
+                                        .email("JanMacnerDEV@gmail.com")
                                         .url("https://wiki.krematos.internal/middleware")) // Odkaz na interní wiki
                                 .license(new License()
                                         .name("Education") // Důležité pro audit licencí
-                                        .url("https://krematos.cz/licenses")))
+                                        ))
 
                         // 2. SERVER SEKCE (Umožňuje přepínat prostředí v Swagger UI)
                         .servers(List.of(

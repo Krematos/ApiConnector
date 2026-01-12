@@ -2,6 +2,8 @@ package krematos;
 
 import krematos.connector.ExternalApiException;
 import krematos.connector.ExternalSystemConnector;
+import krematos.exception.ValidationException;
+import krematos.controller.GlobalExceptionHandler;
 import krematos.model.*;
 import krematos.repository.TransactionRepository;
 import krematos.service.TransactionService;
@@ -13,17 +15,19 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.annotation.Import;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class) // Použití JUnit 5 s Mockito
+@ExtendWith(MockitoExtension.class)
+@Import(GlobalExceptionHandler.class)
 class TransactionServiceTest {
 
         @Mock
@@ -35,127 +39,141 @@ class TransactionServiceTest {
         @InjectMocks
         private TransactionService transactionService;
 
-        // Testovací data
         private InternalRequest validRequest;
         private TransactionAudit pendingAudit;
 
         @BeforeEach
         void setUp() {
-                // Příprava dat před každým testem
                 validRequest = new InternalRequest(
-                        "ORDER-123",
-                        BigDecimal.valueOf(1000.0),
-                        "CZK",
-                        "PAYMENT",
-                        null
-                );
+                                "ORDER-123",
+                                BigDecimal.valueOf(1000.0),
+                                "CZK",
+                                "PAYMENT",
+                                null);
 
                 pendingAudit = TransactionAudit.builder()
-                        .id(1L)
-                        .internalOrderId("ORDER-123")
-                        .status(AuditStatus.PENDING.name())
-                        .build();
+                                .id(1L)
+                                .internalOrderId("ORDER-123")
+                                .status(AuditStatus.PENDING.name())
+                                .build();
         }
 
         @Test
-        @DisplayName("ÚSPĚCH: Transakce projde, uloží se audit a vrátí response")
+        @DisplayName("SUCCESS: Transaction is processed, audit is saved and response is returned")
         void process_Success() {
-                // 1. MOCK: Uložení PENDING do DB
+                // Given
                 when(transactionRepository.save(any(TransactionAudit.class)))
-                        .thenReturn(Mono.just(pendingAudit));
+                                .thenReturn(Mono.just(pendingAudit));
 
-                // 2. MOCK: Úspěšné volání externího API
                 ExternalApiResponse apiResponse = new ExternalApiResponse(
-                        200,
-                        "OK",
-                        "COMPLETED",
-                        Instant.now().toEpochMilli()
-                );
+                                200,
+                                "CONFIRM-1",
+                                "COMPLETED",
+                                Instant.now().toEpochMilli());
+
                 when(externalSystemConnector.sendRequest(any(ExternalApiRequest.class)))
-                        .thenReturn(Mono.just(apiResponse));
+                                .thenReturn(Mono.just(apiResponse));
 
-                // 3. Spuštění testu pomocí StepVerifier
+                // When & Then
                 StepVerifier.create(transactionService.process(validRequest))
-                        .assertNext(response -> {
-                                // Ověření návratové hodnoty
-                                assertEquals(true, response.isSuccess());
-                                assertEquals("ORDER-123", response.getInternalReferenceId());
-                        })
-                        .verifyComplete();
+                                .assertNext(response -> {
+                                        assertThat(response.getSuccess()).isTrue();
+                                        assertThat(response.getInternalReferenceId()).isEqualTo("ORDER-123");
+                                })
+                                .verifyComplete();
 
-                // 4. Ověření interakcí (Verify)
-                // Repository se musí volat 2x (1x PENDING, 1x SUCCESS)
+                // Verify interactions
                 verify(transactionRepository, times(2)).save(any(TransactionAudit.class));
                 verify(externalSystemConnector, times(1)).sendRequest(any(ExternalApiRequest.class));
         }
 
         @Test
-        @DisplayName("CHYBA API: Externí systém vrátí chybu, audit se uloží jako FAILED")
+        @DisplayName("API FAILURE: External system failed, audit is saved as FAILED")
         void process_ExternalApiFailure() {
-                // 1. MOCK: Uložení PENDING
+                // Given
                 when(transactionRepository.save(any(TransactionAudit.class)))
-                        .thenReturn(Mono.just(pendingAudit));
+                                .thenReturn(Mono.just(pendingAudit));
 
-                // 2. MOCK: Externí API vyhodí chybu
                 when(externalSystemConnector.sendRequest(any()))
-                        .thenReturn(Mono.error(new RuntimeException("Connection timed out")));
+                                .thenReturn(Mono.error(new RuntimeException("Connection timed out")));
 
-                // 3. Spuštění testu - očekává chybu
+                // When & Then
                 StepVerifier.create(transactionService.process(validRequest))
-                        .expectErrorMatches(throwable ->
-                                throwable instanceof RuntimeException &&
-                                        throwable.getMessage().equals("Connection timed out")
-                        )
-                        .verify();
+                                .expectErrorMatches(throwable -> throwable instanceof RuntimeException &&
+                                                "Connection timed out".equals(throwable.getMessage()))
+                                .verify();
 
-                // 4. Ověření, že se uložil stav FAILED
-                // Použije ArgumentCaptor, aby zkontroloval, s jakým stavem se repo volalo podruhé
+                // Verify status FAILED
                 ArgumentCaptor<TransactionAudit> auditCaptor = ArgumentCaptor.forClass(TransactionAudit.class);
                 verify(transactionRepository, times(2)).save(auditCaptor.capture());
 
-                // Poslední uložený stav musí být FAILED
                 TransactionAudit failedAudit = auditCaptor.getAllValues().get(1);
-                assertEquals(AuditStatus.FAILED.name(), failedAudit.getStatus());
-                assertEquals("Connection timed out", failedAudit.getDetails());
+                assertThat(failedAudit.getStatus()).isEqualTo(AuditStatus.FAILED.name());
+                assertThat(failedAudit.getDetails()).isEqualTo("Connection timed out");
         }
 
         @Test
-        @DisplayName("VALIDACE: Neplatná částka (<= 0) vyhodí chybu ihned")
+        @DisplayName("VALIDATION: Invalid amount (<= 0) throws exception immediately")
         void process_InvalidAmount() {
+                // Given
                 InternalRequest invalidRequest = new InternalRequest(
-                        "ORDER-BAD",
-                        BigDecimal.ZERO, // Neplatná částka
-                        "CZK",
-                        "PAYMENT",
-                        null
-                );
+                                "ORDER-BAD",
+                                BigDecimal.ZERO,
+                                "CZK",
+                                "PAYMENT",
+                                null);
 
+                // When & Then
                 StepVerifier.create(transactionService.process(invalidRequest))
-                        .expectError(ExternalApiException.class) // Očekává vlastní výjimku
-                        .verify();
+                                .expectError(ValidationException.class)
+                                .verify();
 
-                // Důležité: Repository ani Connector se nesmí volat!
                 verifyNoInteractions(transactionRepository);
                 verifyNoInteractions(externalSystemConnector);
         }
 
         @Test
-        @DisplayName("EDGE CASE: Externí systém vrátí prázdné Mono (switchIfEmpty)")
+        @DisplayName("VALIDATION: Missing currency throws exception immediately")
+        void process_MissingCurrency() {
+                // Given
+                InternalRequest invalidRequest = new InternalRequest(
+                                "ORDER-BAD",
+                                BigDecimal.TEN,
+                                null,
+                                "PAYMENT",
+                                null);
+
+                // When & Then
+                StepVerifier.create(transactionService.process(invalidRequest))
+                                .expectError(ValidationException.class)
+                                .verify();
+
+                verifyNoInteractions(transactionRepository);
+                verifyNoInteractions(externalSystemConnector);
+        }
+
+        @Test
+        @DisplayName("EDGE CASE: External system returns empty Mono (switchIfEmpty)")
         void process_EmptyResponse() {
-                // 1. MOCK: Uložení PENDING
+                // Given
                 when(transactionRepository.save(any(TransactionAudit.class)))
-                        .thenReturn(Mono.just(pendingAudit));
+                                .thenReturn(Mono.just(pendingAudit));
 
-                // 2. MOCK: Prázdná odpověď
                 when(externalSystemConnector.sendRequest(any()))
-                        .thenReturn(Mono.empty());
+                                .thenReturn(Mono.empty());
 
-                // 3. Spuštění
+                // When & Then
                 StepVerifier.create(transactionService.process(validRequest))
-                        .expectErrorMatches(e -> e.getMessage().contains("Prázdná odpověď"))
-                        .verify();
+                                .expectErrorMatches(e -> e.getMessage().contains("Prázdná odpověď"))
+                                .verify();
 
-                // 4. Ověření, že se to zalogovalo jako FAILED
                 verify(transactionRepository, times(2)).save(any());
+
+                // Verify FAILED status
+                ArgumentCaptor<TransactionAudit> auditCaptor = ArgumentCaptor.forClass(TransactionAudit.class);
+                verify(transactionRepository, times(2)).save(auditCaptor.capture());
+
+                TransactionAudit failedAudit = auditCaptor.getAllValues().get(1);
+                assertThat(failedAudit.getStatus()).isEqualTo(AuditStatus.FAILED.name());
         }
 }

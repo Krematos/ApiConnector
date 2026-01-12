@@ -9,7 +9,7 @@ services:
       # Přepíše konfiguraci z application.yml pro Docker prostředí
       - SPRING_RABBITMQ_HOST=rabbitmq
       - API_SECURITY_KEY=moje-tajne-heslo-12345
-      - EXTERNAL_API_BASE_URL=http://host.docker.internal:9090 # Aby viděl na PC (pro mock server)
+      - EXTERNAL_API_BASE_URL=http://localhost:8080/mock-external # Mock server je uvnitř stejné aplikace
     depends_on:
       - rabbitmq
     networks:

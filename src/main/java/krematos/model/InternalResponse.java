@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class InternalResponse {
     // Status pro interní klienty (true = OK, false = chyba/selhání transakce)
-    private boolean success;
+    private Boolean success;
 
     // Krátký popis stavu, nebo chybová zpráva
     private String message;

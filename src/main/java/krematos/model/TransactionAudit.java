@@ -30,4 +30,6 @@ public class TransactionAudit {
     private Instant createdAt;
     private Instant updatedAt;
 
+    private String externalReferenceId;
+
 }

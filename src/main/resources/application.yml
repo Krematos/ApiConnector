@@ -18,6 +18,9 @@ security:
 logging:
   level:
     org.springframework.security: DEBUG
+    krematos: DEBUG  # <--- Toto ukáže všechno, co se děje v kódu
+    org.springframework.web.reactive.function.client: DEBUG # Ukáže detaily WebClienta
+
 
 spring:
   main:

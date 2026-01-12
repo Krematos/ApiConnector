@@ -13,7 +13,7 @@ export const options = {
 };
 
 export default function () {
-  const url = 'http://localhost:8080/api/transactions';
+  const url = 'http://localhost:8080/api/middleware/v1/transaction';
 
   // Náhodná data, aby grafy vypadaly zajímavě
   const randomAmount = Math.floor(Math.random() * 1000) + 1;
@@ -23,7 +23,8 @@ export default function () {
     internalOrderId: `TEST-${Date.now()}-${__VU}-${__ITER}`, // Unikátní ID
     amount: randomAmount,
     currencyCode: currency,
-    serviceType: 'PAYMENT'
+    serviceType: 'PAYMENT',
+    requestedAt: new Date().toISOString() // ISO timestamp required by InternalRequest
   });
 
   const params = {
@@ -36,9 +37,9 @@ export default function () {
   const res = http.post(url, payload, params);
 
   if (res.status !== 200) {
-        console.log(`CHYBA: Status ${res.status}`);
-        console.log(`Response: ${res.body}`);
-    }
+    console.log(`CHYBA: Status ${res.status}`);
+    console.log(`Response: ${res.body}`);
+  }
 
   // Kontrola, zda server odpověděl 200 OK
   check(res, {

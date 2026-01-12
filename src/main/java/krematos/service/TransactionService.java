@@ -1,6 +1,7 @@
 package krematos.service;
 
-import krematos.connector.ExternalApiException;
+import krematos.exception.ExternalServiceException;
+import krematos.exception.ValidationException;
 import krematos.connector.ExternalSystemConnector;
 import krematos.model.*;
 import krematos.repository.TransactionRepository;
@@ -11,7 +12,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -19,8 +19,6 @@ public class TransactionService {
 
     private final ExternalSystemConnector externalSystemConnector;
     private final TransactionRepository transactionRepository;
-
-
 
     /**
      * Hlavní "Orchestrátor".
@@ -33,21 +31,27 @@ public class TransactionService {
         return validateRequest(request) // Krok 1: Audit (PENDING)
                 .flatMap(this::createPendingAudit) // Krok 1: Vytvoření záznamu v DB
                 .flatMap(audit -> timedExternalCall(request) // Krok 2: Měření latence externího API
-                        .switchIfEmpty(Mono.error(new ExternalApiException("Prázdná odpověď od externího systému", request.getInternalOrderId()))) // switchIfEmpty pro prázdnou odpověď
+                        .switchIfEmpty(Mono.error(new ExternalServiceException("Prázdná odpověď od externího systému",
+                                "External API", request.getInternalOrderId()))) // switchIfEmpty pro prázdnou odpověď
                         .flatMap(response -> handleSuccess(audit, response, request)) // Krok 3a: Úspěch
-                        .onErrorResume(error -> handleFailure(audit, error))          // Krok 3b: Chyba
+                        .onErrorResume(error -> handleFailure(audit, error)) // Krok 3b: Chyba
                 );
     }
 
-    // --- Předběžná validace požadavku ---
+    /**
+     * Předběžná validace požadavku před odesláním do externího systému
+     * Kontroluje základní vstupní data - částku a měnový kód
+     */
     private Mono<InternalRequest> validateRequest(InternalRequest request) {
         if (request.getAmount() == null || request.getAmount().doubleValue() <= 0) {
             log.warn("Neplatná částka: {}", request.getAmount());
-            return Mono.error(new ExternalApiException("Neplatná částka v požadavku", request.getInternalOrderId()));
+            return Mono.error(new ValidationException("Neplatná částka v požadavku", request.getInternalOrderId(),
+                    "Amount: " + request.getAmount()));
         }
         if (request.getCurrencyCode() == null || request.getCurrencyCode().isEmpty()) {
             log.warn("Chybějící měnový kód");
-            return Mono.error(new ExternalApiException("Chybějící měnový kód v požadavku", request.getInternalOrderId()));
+            return Mono.error(new ValidationException("Chybějící měnový kód v požadavku", request.getInternalOrderId(),
+                    "CurrencyCode is null or empty"));
         }
 
         return Mono.just(request);
@@ -70,7 +74,6 @@ public class TransactionService {
 
     // --- KROK 2: Volání externího systému ---
 
-
     // --- KROK 2: Měření latence externího volání
     private Mono<ExternalApiResponse> timedExternalCall(InternalRequest request) {
         ExternalApiRequest externalRequest = mapToExternal(request);
@@ -83,7 +86,8 @@ public class TransactionService {
     }
 
     // --- KROK 3a: Zpracování úspěchu ---
-    private Mono<InternalResponse> handleSuccess(TransactionAudit audit, ExternalApiResponse response, InternalRequest request) {
+    private Mono<InternalResponse> handleSuccess(TransactionAudit audit, ExternalApiResponse response,
+            InternalRequest request) {
         audit.setStatus(AuditStatus.SUCCESS.name());
         audit.setDetails("Potvrzeno ID: " + response.getConfirmationId());
         audit.setUpdatedAt(Instant.now());
@@ -99,7 +103,8 @@ public class TransactionService {
         audit.setDetails(error.getMessage());
         audit.setUpdatedAt(Instant.now());
 
-        // Nejdřív uloží FAILED do DB, a až PAK pošle chybu dál (aby ji chytil Controller nebo RabbitMQ)
+        // Nejdřív uloží FAILED do DB, a až PAK pošle chybu dál (aby ji chytil
+        // Controller nebo RabbitMQ)
         return transactionRepository.save(audit)
                 .doOnSuccess(a -> log.error("Audit aktualizován: FAILED ({})", error.getMessage()))
                 .then(Mono.error(error));
@@ -111,8 +116,7 @@ public class TransactionService {
         return new ExternalApiRequest(
                 internal.getInternalOrderId(),
                 internal.getAmount(),
-                internal.getCurrencyCode()
-        );
+                internal.getCurrencyCode());
     }
 
     private InternalResponse mapToInternal(ExternalApiResponse external, String orderId) {

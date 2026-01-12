@@ -50,7 +50,7 @@ public class WebClientConfig {
                 new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
 
         // Nastaví výchozí registraci z application.yml (musí sedět ID registrace!)
-        oauth2Client.setDefaultClientRegistrationId("external-system-client");
+        oauth2Client.setDefaultClientRegistrationId("external-api-client");
 
         return builder
                 .filter(oauth2Client) // Aplikace OAuth2 filtru

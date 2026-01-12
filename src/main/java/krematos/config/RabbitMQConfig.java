@@ -15,7 +15,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 
-
 @Configuration
 public class RabbitMQConfig {
 
@@ -26,7 +25,7 @@ public class RabbitMQConfig {
 
     @Bean
     public DirectExchange exchange() {
-        return new DirectExchange("failed.transaction.exchange");
+        return new DirectExchange("failed.transactions.exchange");
     }
 
     @Bean
@@ -36,6 +35,7 @@ public class RabbitMQConfig {
                 .to(exchange)
                 .with("failed.transaction.routingkey");
     }
+
     // (Příjemce) Receiver pro přijímání zpráv z RabbitMQ
     @Bean
     public Receiver receiver(@Qualifier("monoConnectionFactory") ConnectionFactory connectionFactory) {
@@ -43,20 +43,22 @@ public class RabbitMQConfig {
                 .connectionFactory(connectionFactory)
                 .connectionSubscriptionScheduler(Schedulers.boundedElastic()));
     }
+
     // (Připojení) ConnectionFactory pro reaktivní přístup k RabbitMQ
     @Bean
     public ConnectionFactory monoConnectionFactory(@Value("${spring.rabbitmq.host}") String host,
-                                               @Value("${spring.rabbitmq.port:5672}") int port,
-                                               @Value("${spring.rabbitmq.username}") String username,
-                                               @Value("${spring.rabbitmq.password}") String password) {
+            @Value("${spring.rabbitmq.port:5672}") int port,
+            @Value("${spring.rabbitmq.username}") String username,
+            @Value("${spring.rabbitmq.password}") String password) {
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost(host);
         connectionFactory.setPort(port);
         connectionFactory.setUsername(username);
         connectionFactory.setPassword(password);
-        connectionFactory.useNio(); //  Použití NIO pro neblokující IO
+        connectionFactory.useNio(); // Použití NIO pro neblokující IO
         return connectionFactory;
     }
+
     // (Odesílatel) Sender pro odesílání zpráv do RabbitMQ
     @Bean
     public Sender sender(@Qualifier("monoConnectionFactory") ConnectionFactory connectionFactory) {

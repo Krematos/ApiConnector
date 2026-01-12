@@ -38,7 +38,6 @@ public class SecurityConfig {
         AuthenticationWebFilter apiKeyFilter = new AuthenticationWebFilter(authManager);
         apiKeyFilter.setServerAuthenticationConverter(authConverter);
         // Volitelné: Nastavení handleru pro případ selhání autentizace (např. vrátit JSON místo HTML erroru)
-        // apiKeyFilter.setAuthenticationFailureHandler(...);
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable) // Pro API vypíná CSRF
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
@@ -51,6 +50,7 @@ public class SecurityConfig {
                         .pathMatchers("/actuator/health/**", "/actuator/prometheus").permitAll() // Health veřejný
                         .pathMatchers("/actuator/**").hasAuthority(ROLE_API_USER) // Ostatní metriky raději zabezpečit
                         .pathMatchers("/mock-external/**").permitAll() // Mock endpointy veřejné (pouze pro testování)
+                        .pathMatchers("/mock-auth/**").permitAll() // Mock auth veřejné (pouze pro testování)
 
                         // Aplikační endpointy
                         .pathMatchers("/api/**").authenticated() // Vše pod /api musí být auth
