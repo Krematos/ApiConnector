@@ -59,19 +59,28 @@ IntegracniMiddleware/
 ├── src/main/java/krematos/
 │   ├── Main.java                          # Application Entry Point
 │   ├── config/
-│   │   ├── OpenApiConfig.java             # Swagger UI Logging
+│   │   ├── OpenApiConfig.java             # Swagger UI Configuration
 │   │   ├── RabbitMQConfig.java            # RabbitMQ Configuration
 │   │   ├── SchedulerConfig.java           # ShedLock Configuration
 │   │   └── WebClientConfig.java           # WebClient and OAuth2 Configuration
 │   ├── connector/
 │   │   ├── ExternalSystemConnector.java   # External API Client
-│   │   ├── ExternalApiException.java      # Custom Exception
-│   │   └── FailedTransactionRescuer.java  # Stuck Transaction Rescuer
+│   │   └── ExternalApiException.java      # Custom Exception (deprecated)
 │   ├── consumer/
-│   │   └── FailedTransactionConsumer.java # Failed Transaction Processing
+│   │   ├── FailedTransactionConsumer.java # Failed Transaction Processing
+│   │   └── FailedTransactionRescuer.java  # Stuck Transaction Rescuer
 │   ├── controller/
 │   │   ├── MiddlewareController.java      # REST API Endpoint
-│   │   └── GlobalExceptionHandler.java    # Global Exception Handler
+│   │   ├── GlobalExceptionHandler.java    # Global Exception Handler
+│   │   ├── MockAuthController.java        # Mock OAuth2 Endpoint (test only)
+│   │   └── MockExternalController.java    # Mock External API (test only)
+│   ├── exception/
+│   │   ├── BusinessException.java          # General Business Exception
+│   │   ├── ErrorResponse.java              # Standardized Error Response
+│   │   ├── ExternalServiceException.java   # External Service Exception
+│   │   ├── RateLimitException.java         # Rate Limiting Exception
+│   │   ├── ResourceNotFoundException.java  # Resource Not Found Exception
+│   │   └── ValidationException.java        # Validation Exception
 │   ├── model/
 │   │   ├── AuditStatus.java               # Audit Status Enum
 │   │   ├── InternalRequest.java           # DTO for Incoming Request
@@ -138,6 +147,42 @@ IntegracniMiddleware/
 | `400` | Invalid data (Validation failed) |
 | `403` | Invalid API Key |
 | `503` | External system unavailable (Fallback active) |
+
+---
+
+## Exception Handling
+
+The application implements a robust exception handling system with a hierarchy of custom exceptions and a global handler.
+
+### Exception Structure
+
+| Exception | HTTP Status | Description |
+|-----------|-------------|-------------|
+| `ValidationException` | 400 | Input data validation errors |
+| `ResourceNotFoundException` | 404 | Requested resource not found |
+| `BusinessException` | 409 | General business logic errors |
+| `RateLimitException` | 429 | Request rate limit exceeded |
+| `ExternalServiceException` | 502/503 | External service failure |
+
+### GlobalExceptionHandler
+
+The global handler processes all exceptions and returns a standardized `ErrorResponse` format:
+
+```json
+{
+  "timestamp": "2024-01-15T10:30:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Error description",
+  "path": "/api/middleware/v1/transaction",
+  "details": {
+    "errorCode": "VALIDATION_ERROR",
+    "additionalInfo": "..."
+  }
+}
+```
+
+The handler automatically logs all errors including stack traces for better diagnostics.
 
 ---
 
@@ -362,10 +407,48 @@ http POST localhost:8080/api/middleware/v1/transaction \
 
 ---
 
+## Testing
+
+The application includes a comprehensive test suite utilizing **Testcontainers** for integration testing.
+
+### Testing Technologies
+
+| Technology | Purpose |
+|------------|----------|
+| **Testcontainers** | Isolated test environment (PostgreSQL, RabbitMQ) |
+| **MockWebServer** | External API mocking |
+| **Reactor Test** | Reactive flow testing |
+| **Spring Security Test** | Security testing |
+
+### Mock Controllers (test only)
+
+The application contains mock controllers that are **active only in test profile**:
+
+- **MockAuthController** - simulates OAuth2 token endpoint
+- **MockExternalController** - simulates external API
+
+> ⚠️ **Important**: Mock controllers are **disabled in production** using `@Profile("test")` annotation.
+
+### Running Tests
+
+```bash
+mvn test
+```
+
+### Load Testing (k6)
+
+The project includes a `load-test.js` script for load testing:
+
+```bash
+k6 run load-test.js
+```
+
+---
+
 ## License
 
 This project is created for educational purposes.
 
 ---
 
-*Documentation generated: January 2026*
+*Documentation updated: January 2026*

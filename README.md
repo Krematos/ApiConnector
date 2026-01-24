@@ -1,5 +1,7 @@
 # Dokumentace projektu Integrační Middleware
 
+*Dokumentace aktualizována: Leden 2026*
+
 ## Přehled projektu
 
 **Integrační Middleware (API Connector)** je reaktivní aplikace postavená na **Spring Boot 3.5.8** s využitím stacku **WebFlux**. Slouží jako prostředník mezi interními systémy a externími API, zajišťuje robustní komunikaci s automatickým retry mechanismem, fallback logikou přes RabbitMQ a auditním logováním do databáze.
@@ -61,13 +63,22 @@ IntegracniMiddleware/
 │   │   └── WebClientConfig.java           # Konfigurace WebClient a OAuth2
 │   ├── connector/
 │   │   ├── ExternalSystemConnector.java   # Volání externího API
-│   │   ├── ExternalApiException.java      # Vlastní výjimka
-│   │   └── FailedTransactionRescuer.java  # Záchrana zaseklých transakcí
+│   │   └── ExternalApiException.java      # Vlastní výjimka (deprecated)
 │   ├── consumer/
-│   │   └── FailedTransactionConsumer.java # Zpracování neúspěšných transakcí
+│   │   ├── FailedTransactionConsumer.java # Zpracování neúspěšných transakcí
+│   │   └── FailedTransactionRescuer.java  # Záchrana zaseklých transakcí
 │   ├── controller/
 │   │   ├── MiddlewareController.java      # REST API endpoint
-│   │   └── GlobalExceptionHandler.java    # Globální handler výjimek
+│   │   ├── GlobalExceptionHandler.java    # Globální handler výjimek
+│   │   ├── MockAuthController.java        # Mock OAuth2 endpoint (pouze test)
+│   │   └── MockExternalController.java    # Mock externí API (pouze test)
+│   ├── exception/
+│   │   ├── BusinessException.java          # Obecná business výjimka
+│   │   ├── ErrorResponse.java              # Standardizovaná chybová odpověď
+│   │   ├── ExternalServiceException.java   # Výjimka pro externí služby
+│   │   ├── RateLimitException.java         # Výjimka pro rate limiting
+│   │   ├── ResourceNotFoundException.java  # Výjimka pro nenalezené zdroje
+│   │   └── ValidationException.java        # Výjimka pro validaci
 │   ├── model/
 │   │   ├── AuditStatus.java               # Enum stavu auditu
 │   │   ├── InternalRequest.java           # DTO pro příchozí požadavek
@@ -134,6 +145,42 @@ IntegracniMiddleware/
 | `400` | Neplatná data (validace selhala) |
 | `403` | Neplatný API Key |
 | `503` | Externí systém nedostupný (fallback aktivní) |
+
+---
+
+## Zpracování výjimek
+
+Aplikace implementuje robustní systém zpracování výjimek s hierarchií vlastních výjimek a globálním handlérem.
+
+### Struktura výjimek
+
+| Výjimka | HTTP Status | Popis |
+|---------|-------------|-------|
+| `ValidationException` | 400 | Chyby validace vstupních dat |
+| `ResourceNotFoundException` | 404 | Požadovaný zdroj nebyl nalezen |
+| `BusinessException` | 409 | Obecné business logic chyby |
+| `RateLimitException` | 429 | Překročení limitu requestů |
+| `ExternalServiceException` | 502/503 | Selhání externí služby |
+
+### GlobalExceptionHandler
+
+Globální handler zpracovává všechny výjimky a vrací standardizovanou odpověď ve formátu `ErrorResponse`:
+
+```json
+{
+  "timestamp": "2024-01-15T10:30:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Popis chyby",
+  "path": "/api/middleware/v1/transaction",
+  "details": {
+    "errorCode": "VALIDATION_ERROR",
+    "additionalInfo": "..."
+  }
+}
+```
+
+Handler automaticky loguje všechny chyby včetně stack trace pro lepší diagnostiku problémů.
 
 ---
 
@@ -354,6 +401,44 @@ http POST localhost:8080/api/middleware/v1/transaction \
   amount:=999.99 \
   currencyCode=CZK \
   serviceType=PAYMENT
+```
+
+---
+
+## Testování
+
+Aplikace obsahuje komplexní sadu testů využívajících **Testcontainers** pro integrační testování.
+
+### Technologie testování
+
+| Technologie | Účel |
+|-------------|------|
+| **Testcontainers** | Izolované prostředí pro testy (PostgreSQL, RabbitMQ) |
+| **MockWebServer** | Mockování externího API |
+| **Reactor Test** | Testování reaktivních toků |
+| **Spring Security Test** | Testování zabezpečení |
+
+### Mock Controllery (pouze pro testy)
+
+Aplikace obsahuje mock controllery, které jsou **aktivní pouze v test profilu**:
+
+- **MockAuthController** - simuluje OAuth2 token endpoint
+- **MockExternalController** - simuluje externí API
+
+> ⚠️ **Důležité**: Mock controllery jsou **zakázány v produkci** pomocí `@Profile("test")` anotace.
+
+### Spuštění testů
+
+```bash
+mvn test
+```
+
+### Load Testing (k6)
+
+Projekt obsahuje skript `load-test.js` pro zátěžové testování:
+
+```bash
+k6 run load-test.js
 ```
 
 ---
