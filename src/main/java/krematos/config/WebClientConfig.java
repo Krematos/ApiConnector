@@ -20,7 +20,7 @@ public class WebClientConfig {
         // Konfigurace providera pro Client Credentials flow
         ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider =
                 ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
-                        .clientCredentials() // Důležité: povoluje flow pro komunikaci server-server
+                        .clientCredentials() // povoluje flow pro komunikaci server-server
                         .build();
 
         // Vytvoření managera
@@ -49,7 +49,7 @@ public class WebClientConfig {
         ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2Client =
                 new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
 
-        // Nastaví výchozí registraci z application.yml (musí sedět ID registrace!)
+        // Nastaví výchozí registraci z application.yml
         oauth2Client.setDefaultClientRegistrationId("external-api-client");
 
         return builder

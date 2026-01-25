@@ -138,7 +138,6 @@ class ExternalSystemConnectorTest {
                 when(rabbitSender.send(any(Mono.class))).thenReturn(Mono.empty());
 
                 StepVerifier.create(connector.sendRequest(request))
-                        // ZMĚNA: Přesný text chyby, kterou aplikace hází
                         .expectErrorMatches(throwable -> throwable.getMessage()
                                 .contains("Externí služba není dostupná po 3 pokusech"))
                         .verify();
@@ -177,7 +176,6 @@ class ExternalSystemConnectorTest {
                 }
 
                 StepVerifier.create(connector.sendRequest(createTestRequest()))
-                        // ZMĚNA: Upraven text
                         .expectErrorMatches(t -> t.getMessage().contains("Externí služba není dostupná"))
                         .verify();
         }

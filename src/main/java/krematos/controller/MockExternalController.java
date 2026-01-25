@@ -16,8 +16,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class MockExternalController {
     @PostMapping("/v1/process")
     public Mono<ExternalApiResponse> processTransaction(@RequestBody ExternalApiRequest request) {
-        // Simulace zpoždění sítě (náhodně 50ms až 500ms) - to udělá hezké zuby v
-        // grafech
+        // Simulace zpoždění sítě (náhodně 50ms až 500ms) - pro testování latence
         long delay = ThreadLocalRandom.current().nextLong(50, 500);
 
         return Mono.just(new ExternalApiResponse(200,

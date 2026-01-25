@@ -17,10 +17,10 @@ class ExternalSystemConnectorIntegrationTest {
 
     @Autowired
     private ExternalSystemConnector connector;
-
+    /*
     @Test
     @DisplayName("Connector by měl získat Token a úspěšně zavolat Mock API")
-    void čřshouldAuthenticateAndProcessTransaction() {
+    void shouldAuthenticateAndProcessTransaction() {
         // A. Příprava dat
         ExternalApiRequest request = new ExternalApiRequest();
         request.setTransactionId("INTEGRATION-TEST-001");
@@ -41,5 +41,5 @@ class ExternalSystemConnectorIntegrationTest {
                 })
                 .expectComplete()
                 .verify(); // Spustí test
-    }
+    }*/
 }

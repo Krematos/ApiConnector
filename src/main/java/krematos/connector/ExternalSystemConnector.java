@@ -106,7 +106,7 @@ public class ExternalSystemConnector {
                                 .bodyToMono(ExternalApiResponse.class)
 
                                 // --- REACTIVE RETRY s exponenciálním backoff ---
-                                // Opakujeme pouze dočasné chyby (5xx, timeouty, connection errors)
+                                // Opakuje pouze dočasné chyby (5xx, timeouty, connection errors)
                                 .retryWhen(Retry.backoff(MAX_ATTEMPTS, Duration.ofMillis(RETRY_DELAY_MS))
                                                 .filter(this::isRetryable)
                                                 .doBeforeRetry(retrySignal -> log.warn(
@@ -118,7 +118,7 @@ public class ExternalSystemConnector {
                                                 request.getTransactionId()))
 
                                 // --- FALLBACK (DLQ) ---
-                                // Pokud všechny pokusy selhaly, odešleme zprávu do Dead Letter Queue
+                                // Pokud všechny pokusy selhaly, odešle zprávu do Dead Letter Queue
                                 .onErrorResume(throwable -> {
                                         log.error("Externí volání selhalo po všech pokusech: {}",
                                                         throwable.getMessage());

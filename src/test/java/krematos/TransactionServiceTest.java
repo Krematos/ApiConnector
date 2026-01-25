@@ -114,7 +114,7 @@ class TransactionServiceTest {
 
         @Test
         @DisplayName("VALIDATION: Invalid amount (<= 0) throws exception immediately")
-        void doprocess_InvalidAmount() {
+        void process_InvalidAmount() {
                 // Given
                 InternalRequest invalidRequest = new InternalRequest(
                                 "ORDER-BAD",

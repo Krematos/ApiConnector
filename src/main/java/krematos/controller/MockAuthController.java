@@ -1,5 +1,6 @@
 package krematos.controller;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/mock-auth")
+@Profile({ "test", "local" })
 public class MockAuthController {
     /**
      * Simuluje OAuth2 Token Endpoint (např. Keycloak /token).

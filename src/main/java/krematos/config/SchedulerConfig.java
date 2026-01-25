@@ -32,7 +32,7 @@ public class SchedulerConfig {
     @Value("${spring.datasource.driver-class-name}")
     private String dbDriver;
 
-    // 1. RUČNĚ VYTVOŘÍ DATASOURCE (Tím obejde chybu "No qualifying bean")
+    // 1. RUČNĚ VYTVOŘÍ DATASOURCE
     @Bean
     public DataSource dataSource() {
         return DataSourceBuilder.create()
