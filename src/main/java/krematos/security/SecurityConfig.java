@@ -34,10 +34,10 @@ public class SecurityConfig {
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
                                                             ReactiveAuthenticationManager authManager,
                                                             ServerAuthenticationConverter authConverter) {
-        // Konfigurace filtru. Ten spojuje Converter (získání dat) a Manager (ověření dat)
+        // Konfigurace filtru, spojuje Converter (získání dat) a Manager (ověření dat)
         AuthenticationWebFilter apiKeyFilter = new AuthenticationWebFilter(authManager);
         apiKeyFilter.setServerAuthenticationConverter(authConverter);
-        // Volitelné: Nastavení handleru pro případ selhání autentizace (např. vrátit JSON místo HTML erroru)
+        // Nastavení handleru pro případ selhání autentizace (např. vrátit JSON místo HTML erroru)
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable) // Pro API vypíná CSRF
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
@@ -70,8 +70,6 @@ public class SecurityConfig {
         return exchange -> {
             String apiKey = exchange.getRequest().getHeaders().getFirst(API_KEY_HEADER);
             // Pokud klíč chybí, vrátí Mono.empty().
-            // Tím říká Springu: "Tento request neobsahuje autentizační údaje pro tento filtr."
-            // Spring pak buď zkusí jiný filtr, nebo vrátí 401 (protože endpoint vyžaduje auth).
             if(!StringUtils.hasText(apiKey)) {
                 return Mono.empty();
             }
@@ -89,13 +87,10 @@ public class SecurityConfig {
             // Získá "heslo" (API klíč) z credentials
             String presentedKey = (String) authentication.getCredentials();
 
-            // Bezpečnostní porovnání (v reálné produkci by zde bylo volání do DB nebo Hash check)
+            // Bezpečnostní porovnání
             if (apiKey.equals(presentedKey)) {
 
-                // ÚSPĚCH: Vytvoří nový, plně autentizovaný token.
-                // 1. Principal: Nastaví bezpečnou identitu (např. název služby). To se objeví v logu.
-                // 2. Credentials: null (Vymazání tajemství z paměti - Security Best Practice).
-                // 3. Authorities: Seznam oprávnění.
+                // Vytvoří autentizaci s rolí, pokud je klíč platný
                 Authentication auth = new UsernamePasswordAuthenticationToken(
                         "API_CLIENT_SERVICE", // Toto jméno se zobrazí v logu místo tajného klíče
                         null,
@@ -103,7 +98,7 @@ public class SecurityConfig {
                 );
                 return Mono.just(auth);
             } else {
-                // CHYBA: Vyhodí výjimku, která vyústí v 401 Unauthorized
+                // Vyhodí výjimku, která vyústí v 401 Unauthorized
                 return Mono.error(new BadCredentialsException("Invalid API Key"));
             }
         };

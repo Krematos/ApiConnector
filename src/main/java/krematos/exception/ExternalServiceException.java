@@ -1,11 +1,13 @@
 package krematos.exception;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 /**
  * Výjimka pro chyby při komunikaci s externími službami
  * Používá se když externí API/služba vrátí chybu nebo není dostupná
  */
+@Getter
 public class ExternalServiceException extends BusinessException {
 
     private static final String ERROR_CODE = "EXTERNAL_SERVICE_ERROR";
@@ -29,6 +31,36 @@ public class ExternalServiceException extends BusinessException {
      * @param referenceId        reference ID transakce
      * @param detailMessage      detaily pro debugging (např. původní error z API)
      * @param cause              původní výjimka
+     * @param httpStatus         HTTP status, který má být vrácen klientovi
+     */
+    public ExternalServiceException(
+            String message,
+            String serviceName,
+            Integer externalStatusCode,
+            String referenceId,
+            String detailMessage,
+            Throwable cause,
+            HttpStatus httpStatus) {
+        super(
+                message,
+                detailMessage,
+                httpStatus,
+                ERROR_CODE,
+                referenceId,
+                cause);
+        this.serviceName = serviceName;
+        this.externalStatusCode = externalStatusCode;
+    }
+
+    /**
+     * Konstruktor kompatibilní s původní verzí (default 502 Bad Gateway)
+     * 
+     * @param message            uživatelsky přívětivá zpráva
+     * @param serviceName        název externí služby
+     * @param externalStatusCode HTTP status vrácený externí službou
+     * @param referenceId        reference ID transakce
+     * @param detailMessage      detaily pro debugging (např. původní error z API)
+     * @param cause              původní výjimka
      */
     public ExternalServiceException(
             String message,
@@ -37,15 +69,7 @@ public class ExternalServiceException extends BusinessException {
             String referenceId,
             String detailMessage,
             Throwable cause) {
-        super(
-                message,
-                detailMessage,
-                HttpStatus.BAD_GATEWAY, // 502 - chyba při komunikaci s externí službou
-                ERROR_CODE,
-                referenceId,
-                cause);
-        this.serviceName = serviceName;
-        this.externalStatusCode = externalStatusCode;
+        this(message, serviceName, externalStatusCode, referenceId, detailMessage, cause, HttpStatus.BAD_GATEWAY);
     }
 
     /**
@@ -75,11 +99,4 @@ public class ExternalServiceException extends BusinessException {
         this(message, serviceName, null, referenceId, cause != null ? cause.getMessage() : null, cause);
     }
 
-    public Integer getExternalStatusCode() {
-        return externalStatusCode;
-    }
-
-    public String getServiceName() {
-        return serviceName;
-    }
 }

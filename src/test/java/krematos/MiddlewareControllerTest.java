@@ -1,6 +1,7 @@
 package krematos;
 
 import krematos.connector.ExternalApiException;
+import krematos.exception.ExternalServiceException;
 import krematos.controller.MiddlewareController;
 import krematos.model.InternalRequest;
 import krematos.model.InternalResponse;
@@ -15,6 +16,7 @@ import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurity
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -26,12 +28,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @WebFluxTest(controllers = MiddlewareController.class, excludeAutoConfiguration = {
-        Main.class,
-        ReactiveSecurityAutoConfiguration.class,
-        // PŘIDAT TOTO:
-        ReactiveOAuth2ClientAutoConfiguration.class,
-        // Pro jistotu můžeš přidat i toto, pokud by to stále zlobilo:
-        org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration.class
+                Main.class,
+                ReactiveSecurityAutoConfiguration.class,
+                ReactiveOAuth2ClientAutoConfiguration.class,
+                org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration.class
 })
 class MiddlewareControllerTest {
 
@@ -92,34 +92,38 @@ class MiddlewareControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(validRequest)
                                 .exchange()
-                                .expectStatus().isBadRequest() // Očekáváme HTTP 400
-                                .expectBody(InternalResponse.class)
-                                .value(body -> {
-                                        assertThat(body.getSuccess()).isFalse();
-                                        assertThat(body.getMessage()).contains(errorMessage);
-                                });
+                                .expectStatus().isBadRequest() // Očekává HTTP 400
+                                .expectBody()
+                                .jsonPath("$.status").isEqualTo(400)
+                                .jsonPath("$.error").isEqualTo("Bad Request");
         }
 
         @Test
         @DisplayName("CHYBA SERVERU: Selhání služby nebo vyčerpání pokusů, vrátí HTTP 503 Service Unavailable")
         void shouldReturn503ServiceUnavailableOnServiceFailure() {
-                String errorMessage = "API konektor selhal. Externí systém je nedostupný.";
 
-                // Simulace neočekávané chyby nebo vyčerpání retry logiky (RuntimeException)
+                // Simulace chyby služby (ExternalServiceException s 503)
                 when(transactionService.process(any(InternalRequest.class)))
-                                .thenReturn(Mono.error(new RuntimeException(errorMessage)));
+                                .thenReturn(Mono.error(new ExternalServiceException(
+                                                "Externí služba je dočasně nedostupná",
+                                                "ExternalSystem",
+                                                503,
+                                                validRequest.getInternalOrderId(),
+                                                "Service unavailable",
+                                                null,
+                                                HttpStatus.SERVICE_UNAVAILABLE)));
 
                 // Provedení volání a ověření
                 webTestClient.post().uri(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(validRequest)
                                 .exchange()
-                                .expectStatus().isEqualTo(503) // Očekáváme HTTP 503
-                                .expectBody(InternalResponse.class)
-                                .value(body -> {
-                                        // Ověření obsahu
-                                        assertThat(body.getSuccess()).isFalse();
-                                        assertThat(body.getMessage()).contains("dočasně nedostupná");
-                                });
+                                .expectStatus().isEqualTo(503) // Očekává HTTP 503
+                                .expectBody()
+                                .jsonPath("$.status").isEqualTo(503)
+                                .jsonPath("$.error").isEqualTo("Service Unavailable")
+                                .jsonPath("$.message").value(msg -> assertThat(msg.toString())
+                                                .contains("Externí služba je dočasně nedostupná"));
+
         }
 }

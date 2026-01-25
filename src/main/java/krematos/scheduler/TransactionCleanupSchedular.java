@@ -22,7 +22,7 @@ public class TransactionCleanupSchedular {
     @SchedulerLock(name = "cleanupOldPendingTransactions", lockAtLeastFor = "15s", lockAtMostFor = "30s")
     public void cleanupOldPendingTransactions() {
         Mono.defer(() -> {
-            Instant cutoffTime = Instant.now().minusSeconds(24 * 60 * 60); // 24 hodin zpět
+            Instant cutoffTime = Instant.now().minusSeconds((long)24 * 60 * 60); // 24 hodin zpět
             return transactionRepository.findByStatusAndCreatedAtBefore("PENDING", cutoffTime)
                     .flatMap(audit -> {
                         log.info("Mazání staré PENDING transakce: ID={}, internalOrderId={}", audit.getId(), audit.getInternalOrderId());

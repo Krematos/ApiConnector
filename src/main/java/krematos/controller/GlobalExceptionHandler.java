@@ -2,6 +2,7 @@ package krematos.controller;
 
 import krematos.dto.ApiError;
 import krematos.exception.*;
+import krematos.connector.ExternalApiException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
@@ -229,6 +230,38 @@ public class GlobalExceptionHandler {
                                         .build();
 
                         return Mono.just(ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(apiError));
+                } finally {
+                        clearMDC();
+                }
+        }
+
+        /**
+         * Ošetření ExternalApiException (chyby z konektoru)
+         * Vrací 400 Bad Request
+         */
+        @ExceptionHandler(ExternalApiException.class)
+        public Mono<ResponseEntity<ApiError>> handleExternalApiException(
+                        ExternalApiException ex,
+                        ServerWebExchange exchange) {
+
+                String traceId = generateTraceId();
+
+                try {
+                        log.warn("External API exception: {} | TraceID: {}", ex.getMessage(), traceId);
+
+                        ApiError apiError = ApiError.builder()
+                                        .timestamp(Instant.now())
+                                        .status(HttpStatus.BAD_REQUEST.value())
+                                        .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                                        .message(ex.getMessage())
+                                        .details(isDevEnvironment() ? ex.toString() : null)
+                                        .path(getRequestPath(exchange))
+                                        .traceId(traceId)
+                                        .referenceId(ex.getReferendeId())
+                                        .errorCode("EXTERNAL_API_ERROR")
+                                        .build();
+
+                        return Mono.just(ResponseEntity.badRequest().body(apiError));
                 } finally {
                         clearMDC();
                 }

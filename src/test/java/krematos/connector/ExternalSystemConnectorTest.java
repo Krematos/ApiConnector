@@ -158,9 +158,6 @@ class ExternalSystemConnectorTest {
                 when(rabbitSender.send(any(Mono.class))).thenReturn(Mono.empty());
 
                 StepVerifier.create(connector.sendRequest(request))
-                        // ZMĚNA: Tady to asi hází stejnou obecnou chybu,
-                        // pokud ne, podívej se do ExternalSystemConnector, co přesně hází pro 4xx.
-                        // Dle logu to ale vypadá na stejnou exception.
                         .expectErrorMatches(throwable -> throwable.getMessage()
                                 .contains("Externí služba není dostupná") ||
                                 throwable.getMessage().contains("Požadavek uložen do DLQ"))
