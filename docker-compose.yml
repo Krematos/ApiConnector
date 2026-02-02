@@ -7,11 +7,16 @@ services:
       - "8080:8080" # Mapování portu ven
     environment:
       # Přepíše konfiguraci z application.yml pro Docker prostředí
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_R2DBC_URL=r2dbc:postgresql://postgres:5432/krematos_db
+      - SPRING_R2DBC_USERNAME=Krematos_User
+      - SPRING_R2DBC_PASSWORD=Krematos_Pass
       - SPRING_RABBITMQ_HOST=rabbitmq
       - API_SECURITY_KEY=moje-tajne-heslo-12345
       - EXTERNAL_API_BASE_URL=http://localhost:8080/mock-external # Mock server je uvnitř stejné aplikace
     depends_on:
       - rabbitmq
+      - postgres
     networks:
       - krematos-net
 

@@ -43,13 +43,9 @@ public class ExternalSystemConnector {
         private static final String SERVICE_NAME = "External Payment API";
 
         /**
-         * Pomocná metoda pro filtrování chyb k opakování.
-         */
-        /**
          * Constructor Injection.
          * Spring sem automaticky injektuje bean "externalSystemWebClient" z
-         * WebClientConfigu,
-         * protože typ sedí. Pokud bys měl WebClientů víc, musel bys použít @Qualifier.
+         * WebClientConfigu
          */
         public ExternalSystemConnector(
                         WebClient.Builder webClientBuilder,
@@ -69,7 +65,7 @@ public class ExternalSystemConnector {
 
                 this.webClient = webClientBuilder
                                 .baseUrl(baseUrl)
-                                .filter(oauth) // <--- 5. Přidání filtru do WebClienta
+                                .filter(oauth)
                                 .defaultHeader("Content-Type", "application/json")
                                 .build();
         }
@@ -78,70 +74,55 @@ public class ExternalSystemConnector {
                 log.info("Volání externího API pro transakci: {}", request.getTransactionId());
 
                 return webClient.post()
-                                .uri("/v1/process") // Už jen relativní cesta, BaseURL je v klientovi
-                                .bodyValue(request)
-                                .retrieve()
-                                // Zpracování 4xx chyb (chyba na naší straně - špatný request)
-                                .onStatus(HttpStatusCode::is4xxClientError,
-                                                clientResponse -> clientResponse.bodyToMono(String.class)
-                                                                .flatMap(errorBody -> {
-                                                                        log.error("Chyba klienta (4xx): {} - {}",
-                                                                                        clientResponse.statusCode(),
-                                                                                        errorBody);
-                                                                        return Mono.error(new ExternalServiceException(
-                                                                                        "Chybný požadavek do externího systému: "
-                                                                                                        + clientResponse.statusCode(),
-                                                                                        SERVICE_NAME,
-                                                                                        clientResponse.statusCode()
-                                                                                                        .value(),
-                                                                                        request.getTransactionId(),
-                                                                                        errorBody,
-                                                                                        null));
-                                                                }))
-                                // Zpracování 5xx chyb (chyba na straně externího serveru)
-                                .onStatus(HttpStatusCode::is5xxServerError,
-                                                clientResponse -> Mono.error(WebClientResponseException.create(
-                                                                clientResponse.statusCode().value(),
-                                                                "Externí server selhal.", null, null, null)))
-                                .bodyToMono(ExternalApiResponse.class)
+                        .uri("/v1/process")
+                        .bodyValue(request)
+                        .retrieve()
+                        // Zpracování 4xx chyb
+                        .onStatus(HttpStatusCode::is4xxClientError,
+                                clientResponse -> clientResponse.bodyToMono(String.class)
+                                        .flatMap(errorBody -> {
+                                                log.error("Chyba klienta (4xx): {} - {}", clientResponse.statusCode(), errorBody);
+                                                return Mono.error(new ExternalServiceException("Chybný požadavek do externího systému: "
+                                                        + clientResponse.statusCode(), SERVICE_NAME,
+                                                        clientResponse.statusCode().value(),
+                                                        request.getTransactionId(), errorBody, null));
+                                        }))
+                        // Zpracování 5xx chyb (chyba na straně externího serveru)
+                        .onStatus(HttpStatusCode::is5xxServerError,
+                                clientResponse -> Mono.error(WebClientResponseException.create(
+                                        clientResponse.statusCode().value(),
+                                        "Externí server selhal.", null, null, null)))
+                        .bodyToMono(ExternalApiResponse.class)
 
-                                // --- REACTIVE RETRY s exponenciálním backoff ---
-                                // Opakuje pouze dočasné chyby (5xx, timeouty, connection errors)
-                                .retryWhen(Retry.backoff(MAX_ATTEMPTS, Duration.ofMillis(RETRY_DELAY_MS))
-                                                .filter(this::isRetryable)
-                                                .doBeforeRetry(retrySignal -> log.warn(
-                                                                "Opakuji volání (pokus {}/{}). Chyba: {}",
-                                                                retrySignal.totalRetries() + 1, MAX_ATTEMPTS,
-                                                                retrySignal.failure().getMessage())))
+                        // --- REACTIVE RETRY s exponenciálním backoff ---
+                        // Opakuje pouze dočasné chyby (5xx, timeouty, connection errors)
+                        .retryWhen(Retry.backoff(MAX_ATTEMPTS, Duration.ofMillis(RETRY_DELAY_MS))
+                                .filter(this::isRetryable)
+                                .doBeforeRetry(retrySignal -> log.warn(
+                                        "Opakuji volání (pokus {}/{}). Chyba: {}",
+                                        retrySignal.totalRetries() + 1, MAX_ATTEMPTS,
+                                        retrySignal.failure().getMessage())))
 
-                                .doOnSuccess(response -> log.info("-> Externí volání OK: {}",
-                                                request.getTransactionId()))
-
-                                // --- FALLBACK (DLQ) ---
-                                // Pokud všechny pokusy selhaly, odešle zprávu do Dead Letter Queue
+                        .doOnSuccess(response -> log.info("-> Externí volání OK: {}", request.getTransactionId()))
+                        // --- FALLBACK (DLQ) ---
+                        // Pokud všechny pokusy selhaly, odešle zprávu do Dead Letter Queue
                                 .onErrorResume(throwable -> {
-                                        log.error("Externí volání selhalo po všech pokusech: {}",
-                                                        throwable.getMessage());
+                                        log.error("Externí volání selhalo po všech pokusech: {}", throwable.getMessage());
                                         return sendToDeadLetter(request)
-                                                        .then(Mono.error(new ExternalServiceException(
-                                                                        "Externí služba není dostupná po "
-                                                                                        + MAX_ATTEMPTS
-                                                                                        + " pokusech. Požadavek uložen do DLQ.",
-                                                                        SERVICE_NAME,
-                                                                        request.getTransactionId(),
-                                                                        throwable)));
+                                                .then(Mono.error(new ExternalServiceException(
+                                                        "Externí služba není dostupná po " + MAX_ATTEMPTS + " pokusech. Požadavek uložen do DLQ.",
+                                                        SERVICE_NAME, request.getTransactionId(), throwable)));
                                 });
         }
 
         /**
          * Určuje zda chyba je dočasná a má smysl ji opakovat
-         * Opakujeme pouze:
+         * Opakuje pouze:
          * - 503 Service Unavailable (server je dočasně nedostupný)
          * - 504 Gateway Timeout (timeout při proxy/gateway)
          * - 500 Internal Server Error (může být dočasná chyba serveru)
          * - Connection errors (síťové problémy)
-         * 
-         * NEOPAKUJEME 4xx chyby - ty indikují problém v našem požadavku
+         * NEOPAKUJE 4xx chyby - ty indikují problém v našem požadavku
          */
         private boolean isRetryable(Throwable ex) {
                 return ex instanceof WebClientResponseException.ServiceUnavailable ||

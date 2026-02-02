@@ -72,6 +72,8 @@ IntegracniMiddleware/
 │   │   ├── GlobalExceptionHandler.java    # Globální handler výjimek
 │   │   ├── MockAuthController.java        # Mock OAuth2 endpoint (pouze test)
 │   │   └── MockExternalController.java    # Mock externí API (pouze test)
+│   ├── dto/
+│   │   └── ApiError.java                  # DTO pro chybové odpovědi
 │   ├── exception/
 │   │   ├── BusinessException.java          # Obecná business výjimka
 │   │   ├── ErrorResponse.java              # Standardizovaná chybová odpověď
@@ -135,7 +137,7 @@ IntegracniMiddleware/
 | `amount` | BigDecimal | Částka transakce |
 | `currencyCode` | String | Kód měny (CZK, EUR, ...) |
 | `serviceType` | String | Typ služby/produktu |
-| `requestedAt` | LocalDateTime | Datum a čas požadavku |
+| `requestedAt` | Instant | Datum a čas požadavku |
 
 #### Odpovědi
 

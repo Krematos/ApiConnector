@@ -29,8 +29,8 @@ public class FailedTransactionRescuer {
 
         transactionRepository.findStuckFailedTransactions(limit)
                 .flatMap(this::processRescue)
-                .subscribe(count -> log.info("✅ KONEC: Úspěšně zachráněno/zpracováno {} transakcí.", count),
-                        error -> log.error("❌ CRITICAL: Celý proces záchrany selhal na neočekávané chybě!", error)); // V Scheduled metodě musí zavolat subscribe(), jinak se Reactive Stream nespustí!
+                .subscribe(count -> log.info(" Úspěšně zachráněno/zpracováno {} transakcí.", count),
+                        error -> log.error(" Celý proces záchrany selhal na neočekávané chybě!", error)); // V Scheduled metodě musí zavolat subscribe(), jinak se Reactive Stream nespustí!
     }
 
     private Mono<Void> processRescue(TransactionAudit audit) {

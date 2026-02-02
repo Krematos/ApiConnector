@@ -26,7 +26,7 @@ public class FailedTransactionConsumer {
     @Bean
     public Function<Flux<ExternalApiRequest>, Mono<Void>> processFailedTransaction() {
         return flux -> flux
-                .flatMap(this::processSingleRequest) // flatMap zpracovává paralelně, concatMap by šel popořadě
+                .flatMap(this::processSingleRequest) // flatMap zpracovává paralelně
                 .then(); // Po zpracování celého streamu (nebo při běhu) vrací signál dokončení
     }
 
@@ -39,7 +39,7 @@ public class FailedTransactionConsumer {
         return transactionService.process(internalRequest)
                 .doOnSuccess(s -> log.info("RETRY ÚSPĚŠNÉ pro ID: {}", externalApiRequest.getTransactionId()))
                 .doOnError(e -> log.error("RETRY SELHALO pro ID: {}. Chyba: {}", externalApiRequest.getTransactionId(), e.getMessage()))
-                .onErrorResume(e -> Mono.empty()) // Chybu "spolkne", aby neshodila celý stream (zpráva se zahodí nebo půjde do DLQ podle nastavení Spring Cloud Stream)
+                .onErrorResume(e -> Mono.empty()) // Chybu "spolkne", aby neshodila celý stream 
                 .then();
     }
 
