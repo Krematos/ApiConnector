@@ -5,8 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="cb5c0482-fb4d-4417-bee6-64bd96c2ce2d" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/github/dependabot.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/krematos/service/TransactionService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/krematos/service/TransactionService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
