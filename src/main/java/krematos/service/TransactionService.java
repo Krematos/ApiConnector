@@ -88,8 +88,7 @@ public class TransactionService {
         }
 
         // ---  Zpracování úspěchu ---
-        private Mono<InternalResponse> handleSuccess(TransactionAudit audit, ExternalApiResponse response,
-                        InternalRequest request) {
+        private Mono<InternalResponse> handleSuccess(TransactionAudit audit, ExternalApiResponse response, InternalRequest request) {
                 audit.setStatus(AuditStatus.SUCCESS.name());
                 audit.setDetails("Potvrzeno ID: " + response.getConfirmationId());
                 audit.setUpdatedAt(Instant.now());
@@ -105,8 +104,6 @@ public class TransactionService {
                 audit.setDetails(error.getMessage());
                 audit.setUpdatedAt(Instant.now());
 
-                // Nejdřív uloží FAILED do DB, a až PAK pošle chybu dál (aby ji chytil
-                // Controller nebo RabbitMQ)
                 return transactionRepository.save(audit)
                                 .doOnSuccess(a -> log.error("Audit aktualizován: FAILED ({})", error.getMessage()))
                                 .then(Mono.error(error));
